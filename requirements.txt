@@ -1,5 +1,7 @@
 numpy
+pandas
 torch
 datasets
 transformers
-sentence-transformers
+sentence_transformers
+scikit-learn

@@ -21,10 +21,14 @@ from transformers import (
     AutoTokenizer
 )
 
+# --------
+
 # First, we load the dataset!
 ds = load_dataset(
     "sapienzanlp-course-materials/hw-mnlp-2026"
 )
+
+# --------
 
 # Dataset features initialization
 query = ds["train"]["query"]
@@ -39,6 +43,7 @@ n_candidates_test = ds["test"]["n_candidates"]
 answer_test = ds["test"]["answer"]
 answer_pos_test = ds["test"]["answer_pos"]
 
+# -------
 
 # Model initialization
 bert_name = 'distilbert/distilbert-base-uncased'
