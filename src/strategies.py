@@ -15,9 +15,9 @@ def create_sentence_pairs(dataset):
         positive = candidates[answer_pos] # positive = the good answer
 
         pair = { # positive pair binding
-            "query": query,
-            "candidate": positive,
-            "label": 1,
+            "sentence1": query,
+            "sentence2": positive,
+            "label": 1.0,
         }
         paired_dataset.append(pair)
 
@@ -29,9 +29,9 @@ def create_sentence_pairs(dataset):
         negative = candidates[negative_i]
 
         pair = { # negative pair binding
-            "query": query,
-            "candidate": negative,
-            "label": 0,
+            "sentence1": query,
+            "sentence2": negative,
+            "label": 0.0,
         }
         paired_dataset.append(pair)
 
@@ -77,7 +77,7 @@ def create_samples(mnr_dev_dataset):
       negatives.append(ds_line[f"negative_{i}"])
     samples.append({
         "query": ds_line["anchor"],
-        "positive": ds_line["positive"],
+        "positive": [ds_line["positive"]],
         "negative": negatives
     })
   return samples
