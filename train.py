@@ -100,7 +100,7 @@ def main():
         del model
         del trainer
         gc.collect()
-        if torch.backend.mps.is_available():
+        if torch.backends.mps.is_available():
             torch.mps.empty_cache()
 
 if __name__ == "__main__":

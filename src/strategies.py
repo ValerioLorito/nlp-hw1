@@ -2,7 +2,8 @@ from datasets import Dataset
 import random
 
 ### Sentence Pair Strategy
-def create_sentence_pairs(dataset):
+def create_sentence_pairs(dataset, seed=42):
+    random.seed(seed)
     paired_dataset = [] # this will be our final dataset in a List object
     pair = {} # we define a Dict structure for each pair
 
@@ -39,7 +40,8 @@ def create_sentence_pairs(dataset):
 
 
 ### Multiple Negatives Ranking Loss batching strategy
-def create_batches(dataset):
+def create_batches(dataset, seed=42):
+  random.seed(seed)
   batch = {
       "anchor": [],
       "positive": [],
