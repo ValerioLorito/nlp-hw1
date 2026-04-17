@@ -15,7 +15,7 @@ def mean_pooling(model_output, attention_mask):
 # Optimized encoding function with batching support
 def encode_texts(texts, tokenizer, model, batch_size=32):
   all_embeddings = []
-  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') # Ensures to use GPU if it is possible
+  device = torch.device('mps') if torch.backend.mps.is_available() else torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu') # Ensures to use GPU if it is possible
   model.to(device)
 
   for i in range(0, len(texts), batch_size): # Break data into small chunks in order to avoid problems of memory
@@ -67,7 +67,7 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
 def main():
     from data_loader import load_data
     from metrics import hit_at_k
-    
+
     # Load pre-trained models and tokenizers
     distilbert = 'distilbert/distilbert-base-uncased'
     distilbert_tokenizer = AutoTokenizer.from_pretrained(distilbert)
