@@ -36,8 +36,9 @@ def sentence_transformer_trainer(model, args, train_set, dev_set, loss, evaluato
   )
 
 def main():
-    ds = load_data()
+    ds = load_data() # Load the dataset using our data loader function
 
+    # We define a dictionary of models to train, with their corresponding training strategy and loss function.
     models = {
         "distilbert_pairs": {
             "model_name": "distilbert/distilbert-base-uncased",
@@ -65,8 +66,9 @@ def main():
         },
     }
 
+    # For each model in the dictionary, we create the appropriate training and evaluation structure
     for model_key, model_item in models.items():
-        if model_item["strategy"] == "pairs":
+        if model_item["strategy"] == "pairs": # We create sentence pairs for the contrastive loss strategy, and a BinaryClassificationEvaluator for evaluation
             ds_train = create_sentence_pairs(ds["train"])
             ds_dev = create_sentence_pairs(ds["dev"])
             dev_evaluator = BinaryClassificationEvaluator(
@@ -77,7 +79,7 @@ def main():
                 write_csv=False
             )
 
-        elif model_item["strategy"] == "mnr":
+        elif model_item["strategy"] == "mnr": # We create batches with multiple negatives for the Multiple Negatives Ranking Loss strategy, and a RerankingEvaluator for evaluation
             ds_train = create_batches(ds["train"])
             ds_dev = create_batches(ds["dev"])
             dev_evaluator = RerankingEvaluator(
@@ -86,14 +88,15 @@ def main():
                 write_csv=False
             )
 
-        model = SentenceTransformer(model_item["model_name"])
+        model = SentenceTransformer(model_item["model_name"]) # Loading the pre-trained model
 
-        loss = model_item["loss"](model)
+        loss = model_item["loss"](model) # Inizialiting the loss function with the model
 
-        args = train_args(model_item["model_name"], model_item["strategy"])
+        args = train_args(model_item["model_name"], model_item["strategy"]) # Getting the training arguments for the model and strategy
 
-        trainer = sentence_transformer_trainer(model, args, ds_train, ds_dev, loss, dev_evaluator)
+        trainer = sentence_transformer_trainer(model, args, ds_train, ds_dev, loss, dev_evaluator) # Creating the trainer for the model and strategy
 
+        # Training and saving the model
         trainer.train()
         model.save_pretrained(args.output_dir)
 

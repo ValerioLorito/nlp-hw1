@@ -7,7 +7,7 @@ from transformers import AutoTokenizer
 from data_loader import load_data
 from metrics import hit_at_k
 
-# mean pooling function
+# Mean pooling function
 def mean_pooling(model_output, attention_mask):
   token_embeddings = model_output[0]
   input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
@@ -24,15 +24,14 @@ def encode_texts(texts, tokenizer, model, batch_size=32):
   for i in range(0, len(texts), batch_size): # Break data into small chunks in order to avoid problems of memory
     batch_texts = texts[i:i + batch_size]
     inputs = tokenizer(batch_texts,
-                       padding=True, # used to have sentences with same length
-                       truncation=True, # cut too long sentences
+                       padding=True, # Used to have sentences with same length
+                       truncation=True, # Cut too long sentences
                        return_tensors='pt').to(device)
 
     with torch.no_grad(): # Disables 'torch' gradients in order to save time (and performance)
       outputs = model(**inputs)
       embeddings = mean_pooling(outputs, inputs['attention_mask'])
-      # Normalize and move back to CPU to save GPU memory
-      normalized_embeddings = torch.nn.functional.normalize(embeddings , p=2, dim=1).cpu()
+      normalized_embeddings = torch.nn.functional.normalize(embeddings , p=2, dim=1).cpu()  # Normalize and move back to CPU to save GPU memory
       all_embeddings.append(normalized_embeddings)
 
   return torch.cat(all_embeddings, dim=0)
@@ -69,6 +68,7 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
   return query_embeddings, candidate_embeddings
 
 def main():
+    # Load pre-trained models and tokenizers
     distilbert = 'distilbert/distilbert-base-uncased'
     distilbert_tokenizer = AutoTokenizer.from_pretrained(distilbert)
     distilbert_model = SentenceTransformer(distilbert)
@@ -78,10 +78,10 @@ def main():
     all_mini_model = SentenceTransformer(all_mini)
 
 
-    ds = load_data()
+    ds = load_data() # Load the dataset using our data loader function
 
+    # Generate embeddings for test and blind sets
     distilbert_query_embeddings, distilbert_candidate_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], distilbert_tokenizer, distilbert_model)
-
     all_mini_query_embeddings, all_mini_candidate_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], all_mini_tokenizer, all_mini_model)
 
     print(f"Generated {len(distilbert_query_embeddings)} query embeddings.")
@@ -98,11 +98,11 @@ def main():
     print(f"Hit@K metrics results for the {all_mini}: {all_mini_results}")
 
     data = {
-    "Model": [distilbert, all_mini],
-    "Hit@1 ": [distilbert_results['Hit@1'], all_mini_results['Hit@1']],
-    "Hit@3": [distilbert_results['Hit@3'], all_mini_results['Hit@3']],
-    "Hit@5": [distilbert_results['Hit@5'], all_mini_results['Hit@5']]
-}
+        "Model": [distilbert, all_mini],
+        "Hit@1 ": [distilbert_results['Hit@1'], all_mini_results['Hit@1']],
+        "Hit@3": [distilbert_results['Hit@3'], all_mini_results['Hit@3']],
+        "Hit@5": [distilbert_results['Hit@5'], all_mini_results['Hit@5']]
+    }
     df_results = pd.DataFrame(data)
     display(df_results.style.format(precision=4).set_caption("Baselines Comparison").hide(axis='index'))
 
