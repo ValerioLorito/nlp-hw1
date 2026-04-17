@@ -7,8 +7,10 @@ def load_data():
         "sapienzanlp-course-materials/hw-mnlp-2026"
     )
 
-    ds_train_df = ds["train"].to_pandas()
-    ds_train, ds_dev = train_test_split(ds_train_df, test_size=0.1, random_state=42)
+    ds_train = ds["train"]
+    train_dev_split = ds["train"].train_test_split(test_size=0.1, seed=42)
+    ds_train = train_dev_split["train"]
+    ds_dev = train_dev_split["test"]
 
     return {
         "train": ds_train,

@@ -4,9 +4,6 @@ from IPython.display import display
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer
 
-from data_loader import load_data
-from metrics import hit_at_k
-
 # Mean pooling function
 def mean_pooling(model_output, attention_mask):
   token_embeddings = model_output[0]
@@ -68,6 +65,9 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
   return query_embeddings, candidate_embeddings
 
 def main():
+    from data_loader import load_data
+    from metrics import hit_at_k
+    
     # Load pre-trained models and tokenizers
     distilbert = 'distilbert/distilbert-base-uncased'
     distilbert_tokenizer = AutoTokenizer.from_pretrained(distilbert)

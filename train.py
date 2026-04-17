@@ -1,11 +1,13 @@
 import gc
 
 import torch
+from transformers import AutoTokenizer
 
 from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, losses, evaluation
 from sentence_transformers.evaluation import BinaryClassificationEvaluator, RerankingEvaluator
 
 from src.data_loader import load_data
+from src.baseline_test import embedding
 from src.strategies import create_sentence_pairs, create_batches, create_samples
 
 def train_args(model, strategy, learning_rate=2e-5, epochs=3, warmup_steps=0.1) -> SentenceTransformerTrainingArguments:
@@ -14,9 +16,9 @@ def train_args(model, strategy, learning_rate=2e-5, epochs=3, warmup_steps=0.1) 
     learning_rate=learning_rate,
     num_train_epochs=epochs,
     warmup_steps=warmup_steps,
-    per_device_train_batch_size=2, # Set to 16 if Windows/Linux or GPU with more memory is available
-    per_device_eval_batch_size=2, # Set to 16 if Windows/Linux or GPU with more memory is available
-    gradient_accumulation_steps=8, # Compensates for the small batch size by accumulating gradients over multiple steps
+    per_device_train_batch_size=8, # Set to 16 if Windows/Linux or GPU with more memory is available
+    per_device_eval_batch_size=8, # Set to 16 if Windows/Linux or GPU with more memory is available
+    gradient_accumulation_steps=2, # Compensates for the small batch size by accumulating gradients over multiple steps
     dataloader_pin_memory=False, # Avoids memory issues on GPU (only for Macbook)
     eval_strategy="epoch",
     save_strategy="epoch",
@@ -67,10 +69,18 @@ def main():
     }
 
     # For each model in the dictionary, we create the appropriate training and evaluation structure
-    for model_key, model_item in models.items():
+    for _, model_item in models.items():
+        
+        model = SentenceTransformer(model_item["model_name"]) # Loading the pre-trained model
+
+        tokenizer = AutoTokenizer.from_pretrained(model_item["model_name"]) # Loading the corresponding tokenizer
+
+        train_query_embeddings, train_candidates_embeddings = embedding(ds["train"]["query"], ds["train"]["candidate_chunks"], tokenizer, model)
+        dev_query_embeddings, dev_candidates_embeddings = embedding(ds["dev"]["query"], ds["dev"]["candidate_chunks"], tokenizer, model)
+
         if model_item["strategy"] == "pairs": # We create sentence pairs for the contrastive loss strategy, and a BinaryClassificationEvaluator for evaluation
-            ds_train = create_sentence_pairs(ds["train"])
-            ds_dev = create_sentence_pairs(ds["dev"])
+            ds_train = create_sentence_pairs(ds["train"], train_query_embeddings, train_candidates_embeddings)
+            ds_dev = create_sentence_pairs(ds["dev"], dev_query_embeddings, dev_candidates_embeddings)
             dev_evaluator = BinaryClassificationEvaluator(
                 sentences1=ds_dev["sentence1"],
                 sentences2=ds_dev["sentence2"],
@@ -80,15 +90,13 @@ def main():
             )
 
         elif model_item["strategy"] == "mnr": # We create batches with multiple negatives for the Multiple Negatives Ranking Loss strategy, and a RerankingEvaluator for evaluation
-            ds_train = create_batches(ds["train"])
-            ds_dev = create_batches(ds["dev"])
+            ds_train = create_batches(ds["train"], train_query_embeddings, train_candidates_embeddings)
+            ds_dev = create_batches(ds["dev"], dev_query_embeddings, dev_candidates_embeddings)
             dev_evaluator = RerankingEvaluator(
                 samples=create_samples(ds_dev),
                 name=model_item["model_name"] + "-mnr-dev",
                 write_csv=False
             )
-
-        model = SentenceTransformer(model_item["model_name"]) # Loading the pre-trained model
 
         loss = model_item["loss"](model) # Inizialiting the loss function with the model
 
