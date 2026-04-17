@@ -82,7 +82,7 @@ def main():
             ds_dev = create_batches(ds["dev"])
             dev_evaluator = RerankingEvaluator(
                 samples=create_samples(ds_dev),
-                name=model_key + "-mnr-dev",
+                name=model_item["model_name"] + "-mnr-dev",
                 write_csv=False
             )
 
