@@ -13,10 +13,11 @@ def mean_pooling(model_output, attention_mask):
   return sum / counts
 
 # Optimized encoding function with batching support
-def encode_texts(texts, tokenizer, model, batch_size=32):
+def encode_texts(texts, tokenizer, model, batch_size=16):
   all_embeddings = []
-  device = torch.device('mps') if torch.backend.mps.is_available() else torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu') # Ensures to use GPU if it is possible
-  model.to(device)
+  device = next(model.parameters()).device
+  # device = torch.device('mps') if torch.backend.mps.is_available() else torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu') # Ensures to use GPU if it is possible
+  # model.to(device)
 
   for i in range(0, len(texts), batch_size): # Break data into small chunks in order to avoid problems of memory
     batch_texts = texts[i:i + batch_size]
@@ -35,10 +36,11 @@ def encode_texts(texts, tokenizer, model, batch_size=32):
 
 # Optimized embedding function using batching for queries and candidates
 def embedding(queries, candidate_chunks_list, tokenizer, model):
+  device = next(model.parameters()).device # added line for GPU
   print("Encoding all queries...")
   # Use the model's native encode if it's a SentenceTransformer, otherwise use our helper
   if isinstance(model, SentenceTransformer):
-    query_embeddings = model.encode(queries, batch_size=32, convert_to_tensor=True, normalize_embeddings=True).cpu()
+    query_embeddings = model.encode(queries, batch_size=32, device=device, convert_to_tensor=True, normalize_embeddings=True).cpu()
   else:
     query_embeddings = encode_texts(queries, tokenizer, model)
 
@@ -47,9 +49,9 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
 
   print("Encoding all candidate chunks...")
   if isinstance(model, SentenceTransformer):
-    flat_candidate_embeddings = model.encode(flat_candidates, batch_size=128, convert_to_tensor=True, normalize_embeddings=True).cpu()
+    flat_candidate_embeddings = model.encode(flat_candidates, batch_size=16, convert_to_tensor=True, normalize_embeddings=True).cpu()
   else:
-    flat_candidate_embeddings = encode_texts(flat_candidates, tokenizer, model, batch_size=128)
+    flat_candidate_embeddings = encode_texts(flat_candidates, tokenizer, model, batch_size=16)
 
   candidate_embeddings = []
   start_idx = 0
@@ -67,15 +69,23 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
 def main():
     from data_loader import load_data
     from metrics import hit_at_k
+    import torch
+        # detect device once
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     # Load pre-trained models and tokenizers
     distilbert = 'distilbert/distilbert-base-uncased'
     distilbert_tokenizer = AutoTokenizer.from_pretrained(distilbert)
-    distilbert_model = SentenceTransformer(distilbert)
+    # Charger directement sur le GPU
+    distilbert_model = SentenceTransformer(distilbert, device=device)
+    #distilbert_model = SentenceTransformer(distilbert)
+    distilbert_model.to(device)
 
     all_mini = 'sentence-transformers/all-MiniLM-L6-v2'
     all_mini_tokenizer = AutoTokenizer.from_pretrained(all_mini)
-    all_mini_model = SentenceTransformer(all_mini)
+    all_mini_model = SentenceTransformer(all_mini, device=device)
+    #all_mini_model = SentenceTransformer(all_mini)
+    all_mini_model.to(device)
 
 
     ds = load_data() # Load the dataset using our data loader function
