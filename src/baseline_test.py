@@ -40,18 +40,18 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
   print("Encoding all queries...")
   # Use the model's native encode if it's a SentenceTransformer, otherwise use our helper
   if isinstance(model, SentenceTransformer):
-    query_embeddings = model.encode(queries, batch_size=32, device=device, convert_to_tensor=True, normalize_embeddings=True).cpu()
+    query_embeddings = model.encode(queries, batch_size=64, device=device, convert_to_tensor=True, normalize_embeddings=True).cpu()
   else:
-    query_embeddings = encode_texts(queries, tokenizer, model)
+    query_embeddings = encode_texts(queries, tokenizer, model, batch_size=64)
 
   # Flatten the candidates for better GPU performance
   flat_candidates = [chunk for sublist in candidate_chunks_list for chunk in sublist]
 
   print("Encoding all candidate chunks...")
   if isinstance(model, SentenceTransformer):
-    flat_candidate_embeddings = model.encode(flat_candidates, batch_size=16, convert_to_tensor=True, normalize_embeddings=True).cpu()
+    flat_candidate_embeddings = model.encode(flat_candidates, batch_size=64, device=device, convert_to_tensor=True, normalize_embeddings=True).cpu()
   else:
-    flat_candidate_embeddings = encode_texts(flat_candidates, tokenizer, model, batch_size=16)
+    flat_candidate_embeddings = encode_texts(flat_candidates, tokenizer, model, batch_size=64)
 
   candidate_embeddings = []
   start_idx = 0
@@ -71,7 +71,7 @@ def main():
     from metrics import hit_at_k
     import torch
         # detect device once
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 
     # Load pre-trained models and tokenizers
     distilbert = 'distilbert/distilbert-base-uncased'

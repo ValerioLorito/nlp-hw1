@@ -15,7 +15,7 @@ def create_sentence_pairs(dataset, query_embeddings, candidates_embeddings, seed
     ds_length = len(dataset)
 
     # Iterate over rows of the dataset
-    for row_idx, ds_line in dataset.iterrows():
+    for row_idx, ds_line in enumerate(dataset):
         query = ds_line["query"]
         candidates = ds_line["candidate_chunks"]
         answer_pos = ds_line["answer_pos"]
@@ -37,7 +37,7 @@ def create_sentence_pairs(dataset, query_embeddings, candidates_embeddings, seed
         # Pick 2 random queries from the dataset to create negative pairs with the current query
         for i in range(2):
             random_idx = random.choice(line_idx)
-            random_query = ds_line[random_idx]["query"]
+            random_query = dataset[random_idx]["query"]
 
             # Negative pair binding                
             pair = { 
@@ -55,9 +55,7 @@ def create_sentence_pairs(dataset, query_embeddings, candidates_embeddings, seed
         negatives = [candidates[idx] for idx in sorted_indices if idx != answer_pos] # Exclude the positive example from the negatives
 
         # Pick the top 3 most similar negative candidates and create pairs
-        for idx in sorted_indices[:3]:
-            negative = negatives[idx.item()]
-            
+        for negative in negatives[:3]:
             # Negative pair binding
             pair = {
                 "sentence1": query,

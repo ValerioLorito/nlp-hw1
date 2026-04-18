@@ -1,5 +1,5 @@
 import gc
-
+import os
 import torch
 from transformers import AutoTokenizer
 
@@ -54,6 +54,12 @@ def main():
             "loss": losses.ContrastiveLoss,
             "strategy": "pairs",
         },
+        "f2llm-pairs": {
+            "model_name": "codefuse-ai/F2LLM-v2-80M",
+            "strategy": "pairs",
+            "loss": losses.ContrastiveLoss,
+            "strategy": "pairs",
+        },
         "distilbert_mnr": {
             "model_name": "distilbert/distilbert-base-uncased",
             "strategy": "mnr",
@@ -66,17 +72,55 @@ def main():
             "loss": losses.MultipleNegativesRankingLoss,
             "strategy": "mnr",
         },
+        "f2llm-mnr": {
+            "model_name": "codefuse-ai/F2LLM-v2-80M",
+            "strategy": "mnr",
+            "loss": losses.MultipleNegativesRankingLoss,
+            "strategy": "mnr",
+        }
     }
 
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
+
+    embeddings_file = "embeddings.pt"
+
+    if os.path.exists(embeddings_file):
+        saved_embs = torch.load(embeddings_file, weights_only=True)
+        
+        train_query_embeddings = saved_embs["train_q"]
+        train_candidates_embeddings = saved_embs["train_c"]
+        dev_query_embeddings = saved_embs["dev_q"]
+        dev_candidates_embeddings = saved_embs["dev_c"]
+    else:
+        # Embedding model and tokenizer loading
+        embedding_model = SentenceTransformer("avsolatorio/GIST-small-Embedding-v0", device=device)
+        embedding_tokenizer = AutoTokenizer.from_pretrained("avsolatorio/GIST-small-Embedding-v0")
+
+        # Embedding computation for both queries and candidates, for both train an dev sets.
+        train_query_embeddings, train_candidates_embeddings = embedding(ds["train"]["query"], ds["train"]["candidate_chunks"], embedding_tokenizer, embedding_model)
+        dev_query_embeddings, dev_candidates_embeddings = embedding(ds["dev"]["query"], ds["dev"]["candidate_chunks"], embedding_tokenizer, embedding_model)
+
+        torch.save({
+            "train_q": train_query_embeddings,
+            "train_c": train_candidates_embeddings,
+            "dev_q": dev_query_embeddings,
+            "dev_c": dev_candidates_embeddings
+        }, embeddings_file)
+
+        # Memory cleanup after embedding generation
+        del embedding_model
+        del embedding_tokenizer
+        gc.collect()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+
+    
     # For each model in the dictionary, we create the appropriate training and evaluation structure
     for _, model_item in models.items():
         
-        model = SentenceTransformer(model_item["model_name"]) # Loading the pre-trained model
+        model = SentenceTransformer(model_item["model_name"]) # Load the pre-trained model
 
-        tokenizer = AutoTokenizer.from_pretrained(model_item["model_name"]) # Loading the corresponding tokenizer
-
-        train_query_embeddings, train_candidates_embeddings = embedding(ds["train"]["query"], ds["train"]["candidate_chunks"], tokenizer, model)
-        dev_query_embeddings, dev_candidates_embeddings = embedding(ds["dev"]["query"], ds["dev"]["candidate_chunks"], tokenizer, model)
+        print(f"Training {model_item['model_name']} with {model_item['strategy']} strategy...")
 
         if model_item["strategy"] == "pairs": # We create sentence pairs for the contrastive loss strategy, and a BinaryClassificationEvaluator for evaluation
             ds_train = create_sentence_pairs(ds["train"], train_query_embeddings, train_candidates_embeddings)

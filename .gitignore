@@ -8,5 +8,7 @@ __pycache__/
 *.pyd
 *.jsonl
 
+embeddings.pt
+
 .DS_Store
 
