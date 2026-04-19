@@ -121,8 +121,8 @@ def main():
     for _, model_item in models.items():
         
         model = SentenceTransformer(model_item["model_name"]) # Load the pre-trained model
-
-        print(f"Training {model_item['model_name']} with {model_item['strategy']} strategy...")
+    
+        print(f"Training {model_item['model_name'].split('/')[-1]} with {model_item['strategy']} strategy...")
 
         if model_item["strategy"] == "pairs": # We create sentence pairs for the contrastive loss strategy, and a BinaryClassificationEvaluator for evaluation
             ds_train = create_sentence_pairs(ds["train"], train_query_embeddings, train_candidates_embeddings)
@@ -147,7 +147,7 @@ def main():
 
         loss = model_item["loss"](model) # Inizialiting the loss function with the model
 
-        args = train_args(model_item["model_name"], model_item["strategy"]) # Getting the training arguments for the model and strategy
+        args = train_args(model_item["model_name"].split('/')[-1], model_item["strategy"]) # Getting the training arguments for the model and strategy
 
         trainer = sentence_transformer_trainer(model, args, ds_train, ds_dev, loss, dev_evaluator) # Creating the trainer for the model and strategy
 
