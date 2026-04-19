@@ -1,19 +1,14 @@
 from src.metrics import hit_at_k, euclidean_distance, cosine_similarity
 import json
 import torch
-import torch
 from sentence_transformers import SentenceTransformer
 from src.data_loader import load_data
 from src.baseline_test import embedding
 
-def evaluate_model(model, dataset, split):
-    dataset = dataset[split]
-       
-    query_embeddings, candidate_embeddings = embedding(dataset["query"], dataset["candidate_chunks"], model.tokenizer, model)
+def evaluate_model(model, query_embeddings, candidate_embeddings, answer_pos, distance_metric):
+    metrics = hit_at_k(query_embeddings, candidate_embeddings, answer_pos, distance_metric)
     
-    metrics = hit_at_k(query_embeddings=query_embeddings, candidate_embeddings=candidate_embeddings, distance_metric='cosine') # or euclidean
-    
-    print(f"Hit@K metrics results for the {model}: {metrics}")
+    print(f"Hit@K metrics results: {metrics}")
 
     return metrics
 
@@ -50,15 +45,16 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.to(device)
 
-
-    results = evaluate_model(model, ds, split="test")
+    test_query_embeddings, test_cand_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], model.tokenizer, model)
+    # blind_query_embeddings, blind_cand_embeddings = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], model.tokenizer, model)
+    answer_pos = ds["test"]["answer_pos"] # for test set
+    results = evaluate_model(model, test_query_embeddings, test_cand_embeddings, answer_pos, 'cosine') # or euclidean
     
     print("Results")
     for k, v in results.items():
         print(f"{k}: {v:.4f}")
 
-    test_query_embeddings, test_cand_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], model.tokenizer, model)
-    # blind_query_embeddings, blind_cand_embeddings = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], model.tokenizer, model)
+    
 
     exports = [("model_name", test_query_embeddings, test_cand_embeddings, "cosine")]
 
