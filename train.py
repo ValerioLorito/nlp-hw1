@@ -44,7 +44,7 @@ def main():
 
     # We define a dictionary of models to train, with their corresponding training strategy and loss function.
     models = {
-        '''"distilbert_pairs": {
+        "distilbert_pairs": {
             "model_name": "distilbert/distilbert-base-uncased",
             "strategy": "pairs",
             "loss": losses.ContrastiveLoss,
@@ -73,7 +73,7 @@ def main():
             "strategy": "mnr",
             "loss": losses.MultipleNegativesRankingLoss,
             "strategy": "mnr",
-        },'''
+        },
         "f2llm-mnr": {
             "model_name": "codefuse-ai/F2LLM-v2-80M",
             "strategy": "mnr",
