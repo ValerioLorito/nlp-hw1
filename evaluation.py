@@ -1,6 +1,21 @@
 from src.metrics import hit_at_k, euclidean_distance, cosine_similarity
 import json
 import torch
+import torch
+from sentence_transformers import SentenceTransformer
+from src.data_loader import load_data
+from src.baseline_test import embedding
+
+def evaluate_model(model, dataset, split):
+    dataset = dataset[split]
+       
+    query_embeddings, candidate_embeddings = embedding(dataset["query"], dataset["candidate_chunks"], model.tokenizer, model)
+    
+    metrics = hit_at_k(query_embeddings=query_embeddings, candidate_embeddings=candidate_embeddings, distance_metric='cosine') # or euclidean
+    
+    print(f"Hit@K metrics results for the {model}: {metrics}")
+
+    return metrics
 
 def create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, similarity):
     with open(filename, 'w') as f:
@@ -28,26 +43,28 @@ def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_e
       create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, metric)
 
 def main():
-    import torch
-    from sentence_transformers import SentenceTransformer
-    from src.data_loader import load_data
-    from src.baseline_test import embedding
-
+    model_path = "/home/emie/Documents/Italie/mNLP/HW1/models/distilbert/distilbert-base-uncased-pairs" 
     ds = load_data()
 
-    model_path = "/home/emie/Documents/Italie/mNLP/swisstransfer_986eead0-7514-49ed-92a8-37574b64bb4a/models/distilbert/distilbert-base-uncased-pairs"
     model = SentenceTransformer(model_path)
-    model.to('cuda' if torch.cuda.is_available() else 'cpu')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    model.to(device)
 
-    print("Génération des embeddings...")
+
+    results = evaluate_model(model, ds, split="test")
+    
+    print("Results")
+    for k, v in results.items():
+        print(f"{k}: {v:.4f}")
+
     test_query_embeddings, test_cand_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], model.tokenizer, model)
-    blind_query_embeddings, blind_cand_embeddings = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], model.tokenizer, model)
+    # blind_query_embeddings, blind_cand_embeddings = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], model.tokenizer, model)
 
     exports = [("model_name", test_query_embeddings, test_cand_embeddings, "cosine")]
 
     print("JSONL Generation...")
     generate_jsonl("test", exports, ds["test"]["query_id"], test_query_embeddings, test_cand_embeddings)
-    generate_jsonl("blind", exports, ds["blind"]["query_id"], blind_query_embeddings, blind_cand_embeddings)
+    # generate_jsonl("blind", exports, ds["blind"]["query_id"], blind_query_embeddings, blind_cand_embeddings)
 
     print("Finish !")
 
