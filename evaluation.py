@@ -39,7 +39,7 @@ def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_e
       create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, metric)
 
 def main():
-    model_path = "/home/emie/Documents/Italie/mNLP/HW1/models/distilbert/distilbert-base-uncased-mnr" 
+    model_path = "/home/emie/Documents/Italie/mNLP/HW1/models/codefuse-ai/F2LLM-v2-80M-mnr" 
     ds = load_data()
 
     model = SentenceTransformer(model_path)
@@ -55,8 +55,6 @@ def main():
     for k, v in results.items():
         print(f"{k}: {v:.4f}")
 
-    
-
     exports = [(os.path.basename(model_path), test_query_embeddings, test_cand_embeddings, "cosine")]
 
     print("JSONL Generation...")
@@ -67,15 +65,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
-"""
-distilbert-base-uncased-pairs :
-Hit@K metrics results: {'Hit@1': 0.5855, 'Hit@3': 0.7915, 'Hit@5': 0.862}
-Results
-Hit@1: 0.5855
-Hit@3: 0.7915
-Hit@5: 0.8620
-
-
-
-"""

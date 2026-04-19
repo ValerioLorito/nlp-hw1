@@ -1,0 +1,43 @@
+lr = 4e-5 and epoch = 2
+
+distilbert-base-uncased-pairs :
+Hit@K metrics results: {'Hit@1': 0.5855, 'Hit@3': 0.7915, 'Hit@5': 0.862}
+Results
+Hit@1: 0.5855
+Hit@3: 0.7915
+Hit@5: 0.8620
+
+distilbert-base-uncased-mnr :
+Hit@K metrics results: {'Hit@1': 0.594, 'Hit@3': 0.8255, 'Hit@5': 0.9065}
+Results
+Hit@1: 0.5940
+Hit@3: 0.8255
+Hit@5: 0.9065
+
+all-miniLM-L6-v2-pairs : 
+Hit@K metrics results: {'Hit@1': 0.596, 'Hit@3': 0.815, 'Hit@5': 0.8835}
+Results
+Hit@1: 0.5960
+Hit@3: 0.8150
+Hit@5: 0.8835
+
+all-miniLM-L6-v2-mnr :
+Hit@K metrics results: {'Hit@1': 0.6125, 'Hit@3': 0.8385, 'Hit@5': 0.913}
+Results
+Hit@1: 0.6125
+Hit@3: 0.8385
+Hit@5: 0.9130
+
+F2LLM-v2-80M-pairs : 
+Hit@K metrics results: {'Hit@1': 0.575, 'Hit@3': 0.8055, 'Hit@5': 0.8725}
+Results
+Hit@1: 0.5750
+Hit@3: 0.8055
+Hit@5: 0.8725
+
+F2LLM-v2-80M-mnr :
+Hit@K metrics results: {'Hit@1': 0.5905, 'Hit@3': 0.817, 'Hit@5': 0.897}
+Results
+Hit@1: 0.5905
+Hit@3: 0.8170
+Hit@5: 0.8970
