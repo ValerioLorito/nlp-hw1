@@ -77,7 +77,7 @@ def create_batches(dataset, query_embeddings, candidates_embeddings): # Creates 
   }
 
   # Pick 3 negative candidates at random for each query (every query has at least 5 candidates, answer included)
-  for row_idx, ds_line in dataset.iterrows():
+  for row_idx, ds_line in enumerate(dataset):
     query = ds_line["query"]
     candidates = ds_line["candidate_chunks"]
     n_candidates = ds_line["n_candidates"]

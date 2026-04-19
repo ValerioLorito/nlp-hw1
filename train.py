@@ -3,22 +3,24 @@ import os
 import torch
 from transformers import AutoTokenizer
 
-from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments, losses, evaluation
-from sentence_transformers.evaluation import BinaryClassificationEvaluator, RerankingEvaluator
+from sentence_transformers import SentenceTransformer, SentenceTransformerTrainer, SentenceTransformerTrainingArguments
+from sentence_transformers.sentence_transformer import losses, evaluation
+from sentence_transformers.sentence_transformer.evaluation import BinaryClassificationEvaluator, RerankingEvaluator
 
 from src.data_loader import load_data
 from src.baseline_test import embedding
 from src.strategies import create_sentence_pairs, create_batches, create_samples
 
-def train_args(model, strategy, learning_rate=2e-5, epochs=3, warmup_steps=0.1) -> SentenceTransformerTrainingArguments:
+def train_args(model, strategy, learning_rate=4e-5, epochs=2, warmup_steps=0.1) -> SentenceTransformerTrainingArguments:
   return SentenceTransformerTrainingArguments(
     output_dir="models/" + model + "-" + strategy,
     learning_rate=learning_rate,
     num_train_epochs=epochs,
     warmup_steps=warmup_steps,
-    per_device_train_batch_size=8, # Set to 16 if Windows/Linux or GPU with more memory is available
-    per_device_eval_batch_size=8, # Set to 16 if Windows/Linux or GPU with more memory is available
-    gradient_accumulation_steps=2, # Compensates for the small batch size by accumulating gradients over multiple steps
+    per_device_train_batch_size=8, # 8 Set to 16 if Windows/Linux or GPU with more memory is available
+    per_device_eval_batch_size=8, # 8 Set to 16 if Windows/Linux or GPU with more memory is available
+    gradient_accumulation_steps=2, # 2 Compensates for the small batch size by accumulating gradients over multiple steps
+    gradient_checkpointing=True,    # Active le re-calcul des activations pour gagner de la RAM
     dataloader_pin_memory=False, # Avoids memory issues on GPU (only for Macbook)
     eval_strategy="epoch",
     save_strategy="epoch",
@@ -42,7 +44,7 @@ def main():
 
     # We define a dictionary of models to train, with their corresponding training strategy and loss function.
     models = {
-        "distilbert_pairs": {
+        '''"distilbert_pairs": {
             "model_name": "distilbert/distilbert-base-uncased",
             "strategy": "pairs",
             "loss": losses.ContrastiveLoss,
@@ -71,7 +73,7 @@ def main():
             "strategy": "mnr",
             "loss": losses.MultipleNegativesRankingLoss,
             "strategy": "mnr",
-        },
+        },'''
         "f2llm-mnr": {
             "model_name": "codefuse-ai/F2LLM-v2-80M",
             "strategy": "mnr",
@@ -139,7 +141,8 @@ def main():
             dev_evaluator = RerankingEvaluator(
                 samples=create_samples(ds_dev),
                 name=model_item["model_name"] + "-mnr-dev",
-                write_csv=False
+                write_csv=False,
+                batch_size=4
             )
 
         loss = model_item["loss"](model) # Inizialiting the loss function with the model
@@ -155,6 +158,8 @@ def main():
         del model
         del trainer
         gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         if torch.backends.mps.is_available():
             torch.mps.empty_cache()
 
