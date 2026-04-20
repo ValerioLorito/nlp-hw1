@@ -2,6 +2,7 @@ from src.metrics import hit_at_k, euclidean_distance, cosine_similarity
 import glob
 import json
 import torch
+import gc
 import os
 from sentence_transformers import SentenceTransformer
 from src.data_loader import load_data
@@ -12,16 +13,36 @@ def evaluate_model(model_path, dataset, device):
     model = SentenceTransformer(model_path)
     model.to(device)
 
-    dev_query_embeddings, dev_cand_embeddings = embedding(dataset["query"], dataset["candidate_chunks"], model.tokenizer, model)
+    embedding_file = f"{model_name}_embeddings.pt"
+
+    if os.path.exists("embeddings/" + embedding_file):
+        saved_embs = torch.load("embeddings/" + embedding_file, weights_only=True)
+        dev_query_embeddings = saved_embs["dev_q"]
+        dev_candidates_embeddings = saved_embs["dev_c"]
+    else:
+        dev_query_embeddings, dev_candidates_embeddings = embedding(dataset["query"], dataset["candidate_chunks"], model.tokenizer, model)
+
+        torch.save({
+            "dev_q": dev_query_embeddings,
+            "dev_c": dev_candidates_embeddings
+        }, "embeddings/" + embedding_file)
+
+        # Memory cleanup after embedding generation
+        del embedding_model
+        del embedding_tokenizer
+        gc.collect()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+
     answer_pos = dataset["answer_pos"] # for dev set
-    metrics = hit_at_k(dev_query_embeddings, dev_cand_embeddings, answer_pos, "cosine")
+    metrics = hit_at_k(dev_query_embeddings, dev_candidates_embeddings, answer_pos, "cosine")
 
     print(f"Hit@K metrics results: {metrics}")
 
-    exports = [(model_name, dev_query_embeddings, dev_cand_embeddings, "cosine")]
+    exports = [(model_name, dev_query_embeddings, dev_candidates_embeddings, "cosine")]
 
     print("JSONL Generation...")
-    generate_jsonl("dev", exports, dataset["query_id"], dev_query_embeddings, dev_cand_embeddings)
+    generate_jsonl("dev", exports, dataset["query_id"], dev_query_embeddings, dev_candidates_embeddings)
 
     return model_name, metrics
 

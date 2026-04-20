@@ -87,7 +87,7 @@ def main():
 
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
 
-    embeddings_file = "embeddings.pt"
+    embeddings_file = "gist_embeddings.pt"
 
     if os.path.exists(embeddings_file):
         saved_embs = torch.load(embeddings_file, weights_only=True)
