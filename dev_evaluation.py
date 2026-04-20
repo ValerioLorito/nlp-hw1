@@ -28,8 +28,6 @@ def evaluate_model(model_path, dataset, device):
         }, "embeddings/" + embedding_file)
 
         # Memory cleanup after embedding generation
-        del embedding_model
-        del embedding_tokenizer
         gc.collect()
         if torch.backends.mps.is_available():
             torch.mps.empty_cache()

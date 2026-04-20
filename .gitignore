@@ -1,6 +1,7 @@
 venv/
 
 models/
+embeddings/
 
 __pycache__/
 *.pyc
