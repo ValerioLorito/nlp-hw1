@@ -1,3 +1,4 @@
+import datetime
 import gc
 import os
 import torch
@@ -13,13 +14,15 @@ from src.strategies import create_sentence_pairs, create_batches, create_samples
 
 def train_args(model, strategy, learning_rate=4e-5, epochs=2, warmup_steps=0.1) -> SentenceTransformerTrainingArguments:
   return SentenceTransformerTrainingArguments(
-    output_dir="models/" + model + "-" + strategy,
+    output_dir="models/" + datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + model + "-" + strategy,
     learning_rate=learning_rate,
     num_train_epochs=epochs,
     warmup_steps=warmup_steps,
-    per_device_train_batch_size=8, # 8 Set to 16 if Windows/Linux or GPU with more memory is available
-    per_device_eval_batch_size=8, # 8 Set to 16 if Windows/Linux or GPU with more memory is available
-    gradient_accumulation_steps=2, # 2 Compensates for the small batch size by accumulating gradients over multiple steps
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=8,
+    gradient_accumulation_steps=2, # Compensates for the small batch size by accumulating gradients over multiple steps
+    weight_decay=0.1,
+    lr_scheduler_type='cosine',
     gradient_checkpointing=True,    # Active le re-calcul des activations pour gagner de la RAM
     dataloader_pin_memory=False, # Avoids memory issues on GPU (only for Macbook)
     eval_strategy="epoch",
@@ -147,7 +150,7 @@ def main():
 
         loss = model_item["loss"](model) # Inizialiting the loss function with the model
 
-        args = train_args(model_item["model_name"].split('/')[-1], model_item["strategy"]) # Getting the training arguments for the model and strategy
+        args = train_args(model_item["model_name"].split('/')[-1], model_item["strategy"], learning_rate=3e-5) # Getting the training arguments for the model and strategy
 
         trainer = sentence_transformer_trainer(model, args, ds_train, ds_dev, loss, dev_evaluator) # Creating the trainer for the model and strategy
 
