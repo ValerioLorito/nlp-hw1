@@ -21,7 +21,7 @@ def evaluate_model(model_path, dataset, device):
     exports = [(model_name, dev_query_embeddings, dev_cand_embeddings, "cosine")]
 
     print("JSONL Generation...")
-    generate_jsonl("dev", exports, dataset["dev"]["query_id"], dev_query_embeddings, dev_cand_embeddings)
+    generate_jsonl("dev", exports, dataset["query_id"], dev_query_embeddings, dev_cand_embeddings)
 
     return model_name, metrics
 
