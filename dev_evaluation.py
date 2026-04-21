@@ -62,12 +62,17 @@ def create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, si
           f.write(json.dumps(line) + '\n')
 
 def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_embeddings):
-  group_name = "It's_always_loss"
+  group_name = "Its_always_loss"
+
+  output_dir = os.path.join("predictions", split_name)
+
+  os.makedirs(output_dir, exist_ok=True)
   
   for variant, query_embeddings, candidate_embeddings, metric in exports:
       filename = f"{group_name}-{split_name}-{variant}.jsonl"
+      filepath = os.path.join(output_dir, filename)
       print(f"{filename} generation...")
-      create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, metric)
+      create_jsonl(query_ids, query_embeddings, candidate_embeddings, filepath, metric)
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
