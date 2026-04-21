@@ -49,7 +49,7 @@ def embedding(queries, candidate_chunks_list, tokenizer, model):
 
   print("Encoding all candidate chunks...")
   if isinstance(model, SentenceTransformer):
-    flat_candidate_embeddings = model.encode(flat_candidates, batch_size=64, device=device, convert_to_tensor=True, normalize_embeddings=True).cpu()
+    flat_candidate_embeddings = model.encode(flat_candidates, batch_size=8, device=device, convert_to_tensor=True, normalize_embeddings=True).cpu()
   else:
     flat_candidate_embeddings = encode_texts(flat_candidates, tokenizer, model, batch_size=64)
 

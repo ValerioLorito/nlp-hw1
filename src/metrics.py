@@ -15,7 +15,8 @@ def hit_at_k(query_embeddings, candidate_embeddings, answer_pos, distance_metric
           scores = torch.nn.functional.cosine_similarity(query.unsqueeze(0), candidates, dim=1)
           descending = True
       elif distance_metric == 'euclidean':
-          scores = torch.cdist(query.unsqueeze(0), candidates, p=2).squeeze(0)
+          #scores = torch.cdist(query.unsqueeze(0), candidates, p=2).squeeze(0)
+          scores = torch.cdist(query.unsqueeze(0).float(), candidates.float(), p=2).squeeze(0)
           descending = False
 
       # Get indices of candidates ranked by distance
@@ -33,8 +34,7 @@ def hit_at_k(query_embeddings, candidate_embeddings, answer_pos, distance_metric
     return {f"Hit@{k}": hit_counts[k] / N for k in ks}
 
 def euclidean_distance(query_embedding, chunk_embeddings):
-  query_in_box = query_embedding.unsqueeze(0) # adding a dimension to fit with chunk_embeddings dimension for computation
-  distances = torch.cdist(query_in_box, chunk_embeddings, p=2) # compute the distance between the query and all chunks
   # p = 2 is for euclidian distance
+  distances = torch.norm(query_embedding - chunk_embeddings, p=2, dim=1)
   return distances.squeeze(0) # remove the dimension and return distances
 
