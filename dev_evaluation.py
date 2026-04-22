@@ -1,4 +1,4 @@
-from src.metrics import hit_at_k, euclidean_distance, cosine_similarity
+from src.metrics import hit_at_k, euclidean_distance, cosine_similarity, mrr_at_k
 import glob
 import json
 import torch
@@ -33,16 +33,18 @@ def evaluate_model(model_path, dataset, device, similarity):
             torch.mps.empty_cache()
 
     answer_pos = dataset["answer_pos"] # for dev set
-    metrics = hit_at_k(dev_query_embeddings, dev_candidates_embeddings, answer_pos, similarity)
+    hit_at_k_metrics = hit_at_k(dev_query_embeddings, dev_candidates_embeddings, answer_pos, similarity)
+    mrr_at_k_metrics = mrr_at_k(dev_query_embeddings, dev_candidates_embeddings, answer_pos, similarity)
 
-    print(f"Hit@K metrics results: {metrics}")
+    print(f"Hit@K metrics results: {hit_at_k_metrics}")
+    print(f"MRR@K metrics results: {mrr_at_k_metrics}")
 
     exports = [(model_name, dev_query_embeddings, dev_candidates_embeddings, similarity)]
 
     print("JSONL Generation...")
     generate_jsonl("dev", exports, dataset["query_id"], dev_query_embeddings, dev_candidates_embeddings)
 
-    return model_name, metrics
+    return model_name, hit_at_k_metrics, mrr_at_k_metrics
 
 def create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, similarity):
     with open(filename, 'w') as f:
@@ -91,33 +93,41 @@ def main():
     euclidean_distance_results = []
 
     for run_path in all_runs:
-        name, metrics = evaluate_model(run_path, ds["dev"], device, "cosine")
-        cosine_similarity_results.append((name, metrics))
-        name, metrics = evaluate_model(run_path, ds["dev"], device, "euclidean")
-        euclidean_distance_results.append((name, metrics))
+        name, hit_at_k_metrics, mrr_at_k_metrics = evaluate_model(run_path, ds["dev"], device, "cosine")
+        cosine_similarity_results.append((name, hit_at_k_metrics, mrr_at_k_metrics))
+        name, hit_at_k_metrics, mrr_at_k_metrics = evaluate_model(run_path, ds["dev"], device, "euclidean")
+        euclidean_distance_results.append((name, hit_at_k_metrics, mrr_at_k_metrics))
 
     print("\nAll Models Evaluation Results:")
     
     output_file = "dev_evaluation_results.txt"
     output_path = os.path.join("predictions", output_file)
-    
+
     with open(output_path, 'w') as f:
         print(f"Model Evaluation Results (Cosine Similarity):\n")
-        f.write("Model Evaluation Results (Cosine Similarity):\n")
-        for name, metrics in cosine_similarity_results:
-            formatted_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
+        f.write("Model Evaluation Results:\n")
+        print("Cosine Similarity:\n")
+        f.write("======== Cosine Similarity ========\n")
+        for name, hit_at_k_metrics, mrr_at_k_metrics in cosine_similarity_results:
+            formatted_hit_at_k_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in hit_at_k_metrics.items()])
+            formatted_mrr_at_k_metrics = ", ".join([f"{k}: {v}" for k, v in mrr_at_k_metrics.items()])
             print(f"Model: {name}")
-            print(f"Metrics: {formatted_metrics}\n")
+            print(f"{formatted_hit_at_k_metrics}")
+            print(f"{formatted_mrr_at_k_metrics}\n")
             f.write(f"Model: {name}\n")
-            f.write(f"Metrics: {formatted_metrics}\n")
-        print(f"Model Evaluation Results (Euclidean Distance):\n")
-        f.write("\nModel Evaluation Results (Euclidean Distance):\n")
-        for name, metrics in euclidean_distance_results:
-            formatted_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
+            f.write(f"{formatted_hit_at_k_metrics}\n")
+            f.write(f"{formatted_mrr_at_k_metrics}\n\n")
+        print("Euclidean Distance:\n")
+        f.write("======== Euclidean Distance ========\n")
+        for name, hit_at_k_metrics, mrr_at_k_metrics in euclidean_distance_results:
+            formatted_hit_at_k_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in hit_at_k_metrics.items()])
+            formatted_mrr_at_k_metrics = ", ".join([f"{k}: {v}" for k, v in mrr_at_k_metrics.items()])
             print(f"Model: {name}")
-            print(f"Metrics: {formatted_metrics}\n")
+            print(f"{formatted_hit_at_k_metrics}")
+            print(f"{formatted_mrr_at_k_metrics}\n")
             f.write(f"Model: {name}\n")
-            f.write(f"Metrics: {formatted_metrics}\n")
+            f.write(f"{formatted_hit_at_k_metrics}\n")
+            f.write(f"{formatted_mrr_at_k_metrics}\n\n")
     print("Finish !")
 
 if __name__ == "__main__":
