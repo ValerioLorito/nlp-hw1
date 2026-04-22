@@ -71,7 +71,7 @@ def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_e
   os.makedirs(output_dir, exist_ok=True)
   
   for variant, query_embeddings, candidate_embeddings, metric in exports:
-      filename = f"{group_name}-{split_name}-{variant}.jsonl"
+      filename = f"{group_name}-{split_name}-{variant}-{metric}.jsonl"
       filepath = os.path.join(output_dir, filename)
       print(f"{filename} generation...")
       create_jsonl(query_ids, query_embeddings, candidate_embeddings, filepath, metric)
@@ -87,17 +87,30 @@ def main():
 
     all_runs = [f for f in all_runs if os.path.isdir(f)]
 
-    all_results = []
+    cosine_similarity_results = []
+    euclidean_distance_results = []
+
     for run_path in all_runs:
+        name, metrics = evaluate_model(run_path, ds["dev"], device, "cosine")
+        cosine_similarity_results.append((name, metrics))
         name, metrics = evaluate_model(run_path, ds["dev"], device, "euclidean")
-        all_results.append((name, metrics))
-    
+        euclidean_distance_results.append((name, metrics))
+
     print("\nAll Models Evaluation Results:")
     
     output_file = "dev_evaluation_results.txt"
     with open(output_file, 'w') as f:
-        f.write("Model Evaluation Results:\n")
-        for name, metrics in all_results:
+        print(f"Model Evaluation Results (Cosine Similarity):\n")
+        f.write("Model Evaluation Results (Cosine Similarity):\n")
+        for name, metrics in cosine_similarity_results:
+            formatted_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
+            print(f"Model: {name}")
+            print(f"Metrics: {formatted_metrics}\n")
+            f.write(f"Model: {name}\n")
+            f.write(f"Metrics: {formatted_metrics}\n")
+        print(f"Model Evaluation Results (Euclidean Distance):\n")
+        f.write("\nModel Evaluation Results (Euclidean Distance):\n")
+        for name, metrics in euclidean_distance_results:
             formatted_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
             print(f"Model: {name}")
             print(f"Metrics: {formatted_metrics}\n")
