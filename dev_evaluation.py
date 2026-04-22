@@ -99,7 +99,9 @@ def main():
     print("\nAll Models Evaluation Results:")
     
     output_file = "dev_evaluation_results.txt"
-    with open(output_file, 'w') as f:
+    output_path = os.path.join("predictions", output_file)
+    
+    with open(output_path, 'w') as f:
         print(f"Model Evaluation Results (Cosine Similarity):\n")
         f.write("Model Evaluation Results (Cosine Similarity):\n")
         for name, metrics in cosine_similarity_results:
