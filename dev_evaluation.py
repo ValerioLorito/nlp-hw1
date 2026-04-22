@@ -8,7 +8,7 @@ from sentence_transformers import SentenceTransformer
 from src.data_loader import load_data
 from src.baseline_test import embedding
 
-def evaluate_model(model_path, dataset, device):
+def evaluate_model(model_path, dataset, device, similarity):
     model_name = os.path.basename(model_path)
     model = SentenceTransformer(model_path)
     model.to(device)
@@ -21,7 +21,7 @@ def evaluate_model(model_path, dataset, device):
         dev_candidates_embeddings = saved_embs["dev_c"]
     else:
         dev_query_embeddings, dev_candidates_embeddings = embedding(dataset["query"], dataset["candidate_chunks"], model.tokenizer, model)
-
+        os.makedirs("embeddings", exist_ok=True)
         torch.save({
             "dev_q": dev_query_embeddings,
             "dev_c": dev_candidates_embeddings
@@ -33,11 +33,11 @@ def evaluate_model(model_path, dataset, device):
             torch.mps.empty_cache()
 
     answer_pos = dataset["answer_pos"] # for dev set
-    metrics = hit_at_k(dev_query_embeddings, dev_candidates_embeddings, answer_pos, "cosine")
+    metrics = hit_at_k(dev_query_embeddings, dev_candidates_embeddings, answer_pos, similarity)
 
     print(f"Hit@K metrics results: {metrics}")
 
-    exports = [(model_name, dev_query_embeddings, dev_candidates_embeddings, "cosine")]
+    exports = [(model_name, dev_query_embeddings, dev_candidates_embeddings, similarity)]
 
     print("JSONL Generation...")
     generate_jsonl("dev", exports, dataset["query_id"], dev_query_embeddings, dev_candidates_embeddings)
@@ -78,7 +78,7 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
     ds = load_data()
 
-    MODELS_DIR = "models" # Directory where the trained models are saved
+    MODELS_DIR = "/home/emie/Documents/Italie/mNLP/swisstransfer_83732a08-294f-48ab-b553-1a8335678bc6" # Directory where the trained models are saved
 
     pattern = os.path.join(MODELS_DIR, "*", "*", "*")
     all_runs = glob.glob(pattern)
@@ -88,7 +88,7 @@ def main():
 
     all_results = []
     for run_path in all_runs:
-        name, metrics = evaluate_model(run_path, ds["dev"], device)
+        name, metrics = evaluate_model(run_path, ds["dev"], device, "euclidean")
         all_results.append((name, metrics))
     
     print("\nAll Models Evaluation Results:")

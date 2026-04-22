@@ -31,7 +31,7 @@ def create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, si
           f.write(json.dumps(line) + '\n')
 
 def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_embeddings):
-  group_name = "It's_always_loss"
+  group_name = "Its_always_loss"
   
   for variant, query_embeddings, candidate_embeddings, metric in exports:
       filename = f"{group_name}-{split_name}-{variant}.jsonl"
@@ -39,7 +39,7 @@ def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_e
       create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, metric)
 
 def main():
-    model_path = "/home/emie/Documents/Italie/mNLP/HW1/models/codefuse-ai/F2LLM-v2-80M-mnr" 
+    model_path = "model_path" 
     ds = load_data()
 
     model = SentenceTransformer(model_path)
