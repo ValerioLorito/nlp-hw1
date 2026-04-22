@@ -1,66 +1,99 @@
-from src.metrics import hit_at_k, euclidean_distance, cosine_similarity
-import json
+from src.metrics import hit_at_k, euclidean_distance, cosine_similarity, mrr_at_k
+from dev_evaluation import create_jsonl
 import torch
+import gc
+import glob
 import os
 from sentence_transformers import SentenceTransformer
 from src.data_loader import load_data
 from src.baseline_test import embedding
 
-def evaluate_model(model, query_embeddings, candidate_embeddings, answer_pos, distance_metric):
-    metrics = hit_at_k(query_embeddings, candidate_embeddings, answer_pos, distance_metric)
-    
-    print(f"Hit@K metrics results: {metrics}")
+def evaluate_model(model_path, dataset, device, similarity):
+    model_name = os.path.basename(model_path)
+    model = SentenceTransformer(model_path)
+    model.to(device)
 
-    return metrics
+    embedding_file = f"{model_name}_embeddings.pt"
 
-def create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, similarity):
-    with open(filename, 'w') as f:
-        for i, q_id in enumerate(query_ids):
-          query_embedding = query_embeddings[i].unsqueeze(0)
-          candidate_embedding = candidate_embeddings[i]
+    if os.path.exists("embeddings_test/" + embedding_file):
+        saved_embs = torch.load("embeddings/" + embedding_file, weights_only=True)
+        test_query_embeddings = saved_embs["test_q"]
+        test_candidates_embeddings = saved_embs["test_c"]
+    else:
+        test_query_embeddings, test_candidates_embeddings = embedding(dataset["query"], dataset["candidate_chunks"], model.tokenizer, model)
+        os.makedirs("embeddings_test", exist_ok=True)
+        torch.save({
+            "test_q": test_query_embeddings,
+            "test_c": test_candidates_embeddings
+        }, "embeddings_test/" + embedding_file)
 
-          if similarity == "cosine":
-            similarities = cosine_similarity(query_embedding, candidate_embedding)
-            ranking = torch.argsort(similarities, descending=True)
-          else:
-            if similarity == "euclidean":
-              distances = euclidean_distance(query_embedding, candidate_embedding)
-              ranking = torch.argsort(distances, descending=False)
+        # Memory cleanup after embedding generation
+        gc.collect()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
 
-          line = {q_id: ranking.tolist()}
-          f.write(json.dumps(line) + '\n')
+    answer_pos = dataset["answer_pos"] # for dev set
+    hit_at_k_metrics = hit_at_k(test_query_embeddings, test_candidates_embeddings, answer_pos, similarity)
+    mrr_at_k_metrics = mrr_at_k(test_query_embeddings, test_candidates_embeddings, answer_pos, similarity)
+
+    print(f"Hit@K metrics results: {hit_at_k_metrics}")
+    print(f"MRR@K metrics results: {mrr_at_k_metrics}")
+
+    exports = [(model_name, test_query_embeddings, test_candidates_embeddings, similarity)]
+
+    print("JSONL Generation...")
+    generate_jsonl("test", exports, dataset["query_id"], test_query_embeddings, test_candidates_embeddings)
+
+    return model_name, hit_at_k_metrics, mrr_at_k_metrics
 
 def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_embeddings):
   group_name = "Its_always_loss"
+
+  output_dir = os.path.join("results", split_name)
+  os.makedirs(output_dir, exist_ok=True)
   
   for variant, query_embeddings, candidate_embeddings, metric in exports:
       filename = f"{group_name}-{split_name}-{variant}.jsonl"
+      filepath = os.path.join(output_dir, filename)
       print(f"{filename} generation...")
-      create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, metric)
+      create_jsonl(query_ids, query_embeddings, candidate_embeddings, filepath, metric)
 
 def main():
-    model_path = "model_path" 
+    device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
     ds = load_data()
 
-    model = SentenceTransformer(model_path)
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    model.to(device)
+    MODELS_DIR = "selected_models"
 
-    test_query_embeddings, test_cand_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], model.tokenizer, model)
-    # blind_query_embeddings, blind_cand_embeddings = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], model.tokenizer, model)
-    answer_pos = ds["test"]["answer_pos"] # for test set
-    results = evaluate_model(model, test_query_embeddings, test_cand_embeddings, answer_pos, 'cosine') # or euclidean
+    pattern = os.path.join(MODELS_DIR, "*", "*")
+    all_runs = glob.glob(pattern)
+
+    all_runs = [f for f in all_runs if os.path.isdir(f)]
+
+    results = []
+
+    for run_path in all_runs:
+        name, hit_at_k_metrics, mrr_at_k_metrics = evaluate_model(run_path, ds["test"], device, "cosine")
+        results.append((name, hit_at_k_metrics, mrr_at_k_metrics))
+
+    print("\nAll Models Evaluation Results:")
     
-    print("Results")
-    for k, v in results.items():
-        print(f"{k}: {v:.4f}")
+    output_file = "test_evaluation_results.txt"
+    output_path = os.path.join("results", output_file)
 
-    exports = [(os.path.basename(model_path), test_query_embeddings, test_cand_embeddings, "cosine")]
-
-    print("JSONL Generation...")
-    generate_jsonl("test", exports, ds["test"]["query_id"], test_query_embeddings, test_cand_embeddings)
-    # generate_jsonl("blind", exports, ds["blind"]["query_id"], blind_query_embeddings, blind_cand_embeddings)
-
+    with open(output_path, 'w') as f:
+        print(f"Model Evaluation Results (Cosine Similarity):\n")
+        f.write("Model Evaluation Results:\n")
+        print("Cosine Similarity:\n")
+        f.write("======== Cosine Similarity ========\n")
+        for name, hit_at_k_metrics, mrr_at_k_metrics in results:
+            formatted_hit_at_k_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in hit_at_k_metrics.items()])
+            formatted_mrr_at_k_metrics = ", ".join([f"{k}: {v}" for k, v in mrr_at_k_metrics.items()])
+            print(f"Model: {name}")
+            print(f"{formatted_hit_at_k_metrics}")
+            print(f"{formatted_mrr_at_k_metrics}\n")
+            f.write(f"Model: {name}\n")
+            f.write(f"{formatted_hit_at_k_metrics}\n")
+            f.write(f"{formatted_mrr_at_k_metrics}\n\n")
     print("Finish !")
 
 if __name__ == "__main__":

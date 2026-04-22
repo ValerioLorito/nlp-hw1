@@ -10,8 +10,8 @@ def compare_jsonl(f1, f2):
                     print(f"Difference found for key : {key}")
 
 def main():
-    f1 = "file1"
-    f2 = "file2"
+    f1 = "f1"
+    f2 = "f2"
     compare_jsonl(f1, f2)
 
 
