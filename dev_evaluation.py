@@ -52,11 +52,13 @@ def create_jsonl(query_ids, query_embeddings, candidate_embeddings, filename, si
 
           if similarity == "cosine":
             similarities = cosine_similarity(query_embedding, candidate_embedding)
-            ranking = torch.argsort(similarities, descending=True)
+            similarities = torch.round(similarities * 1e5) / 1e5
+            ranking = torch.argsort(similarities, descending=True, stable=True)
           else:
             if similarity == "euclidean":
               distances = euclidean_distance(query_embedding, candidate_embedding)
-              ranking = torch.argsort(distances, descending=False)
+              distances = torch.round(distances * 1e5) / 1e5
+              ranking = torch.argsort(distances, descending=False, stable=True)
 
           line = {q_id: ranking.tolist()}
           f.write(json.dumps(line) + '\n')
@@ -92,11 +94,15 @@ def main():
     
     print("\nAll Models Evaluation Results:")
     
-    for name, metrics in all_results:
-        formatted_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
-        print(f"Model: {name}")
-        print(f"Metrics: {formatted_metrics}\n")
-
+    output_file = "dev_evaluation_results.txt"
+    with open(output_file, 'w') as f:
+        f.write("Model Evaluation Results:\n")
+        for name, metrics in all_results:
+            formatted_metrics = ", ".join([f"{k}: {v:.4f}" for k, v in metrics.items()])
+            print(f"Model: {name}")
+            print(f"Metrics: {formatted_metrics}\n")
+            f.write(f"Model: {name}\n")
+            f.write(f"Metrics: {formatted_metrics}\n")
     print("Finish !")
 
 if __name__ == "__main__":
