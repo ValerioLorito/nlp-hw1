@@ -78,13 +78,12 @@ def main():
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
     ds = load_data()
 
-    MODELS_DIR = "/home/emie/Documents/Italie/mNLP/swisstransfer_83732a08-294f-48ab-b553-1a8335678bc6" # Directory where the trained models are saved
+    MODELS_DIR = "models"
 
     pattern = os.path.join(MODELS_DIR, "*", "*", "*")
     all_runs = glob.glob(pattern)
 
     all_runs = [f for f in all_runs if os.path.isdir(f)]
-
 
     all_results = []
     for run_path in all_runs:
