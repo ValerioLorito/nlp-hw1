@@ -1,5 +1,4 @@
 from src.metrics import hit_at_k, euclidean_distance, cosine_similarity, mrr_at_k
-from dev_evaluation import create_jsonl
 import torch
 import gc
 import glob
@@ -7,6 +6,7 @@ import os
 from sentence_transformers import SentenceTransformer
 from src.data_loader import load_data
 from src.baseline_test import embedding
+from jsonl import generate_jsonl
 
 def evaluate_model(model_path, dataset, device, similarity):
     model_name = os.path.basename(model_path)
@@ -45,18 +45,6 @@ def evaluate_model(model_path, dataset, device, similarity):
     generate_jsonl("test", exports, dataset["query_id"], test_query_embeddings, test_candidates_embeddings)
 
     return model_name, hit_at_k_metrics, mrr_at_k_metrics
-
-def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_embeddings):
-  group_name = "Its_always_loss"
-
-  output_dir = os.path.join("results", split_name)
-  os.makedirs(output_dir, exist_ok=True)
-  
-  for variant, query_embeddings, candidate_embeddings, metric in exports:
-      filename = f"{group_name}-{split_name}-{variant}.jsonl"
-      filepath = os.path.join(output_dir, filename)
-      print(f"{filename} generation...")
-      create_jsonl(query_ids, query_embeddings, candidate_embeddings, filepath, metric)
 
 def main():
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
