@@ -72,7 +72,7 @@ def main():
     import torch
         # detect device once
     device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-
+    
     # Load pre-trained models and tokenizers
     distilbert = 'distilbert/distilbert-base-uncased'
     distilbert_tokenizer = AutoTokenizer.from_pretrained(distilbert)
@@ -86,18 +86,23 @@ def main():
     all_mini_model = SentenceTransformer(all_mini, device=device)
     #all_mini_model = SentenceTransformer(all_mini)
     all_mini_model.to(device)
-
+    
+    f2llm = 'codefuse-ai/F2LLM-v2-80M'
+    f2llm_tokenizer = AutoTokenizer.from_pretrained(f2llm)
+    f2llm_model = SentenceTransformer(f2llm, device=device)
+    f2llm_model.to(device)
 
     ds = load_data() # Load the dataset using our data loader function
 
     # Generate embeddings for test and blind sets
     distilbert_query_embeddings, distilbert_candidate_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], distilbert_tokenizer, distilbert_model)
     all_mini_query_embeddings, all_mini_candidate_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], all_mini_tokenizer, all_mini_model)
+    f2llm_query_embeddings, f2llm_candidate_embeddings = embedding(ds["test"]["query"], ds["test"]["candidate_chunks"], f2llm_tokenizer, f2llm_model)
 
     print(f"Generated {len(distilbert_query_embeddings)} query embeddings.")
     print(f"Generated {len(distilbert_candidate_embeddings)} lists of candidate embeddings.")
 
-    queries_blind_embedding, candidates_blind_embedding = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], distilbert_tokenizer, distilbert_model)
+    #queries_blind_embedding, candidates_blind_embedding = embedding(ds["blind"]["query"], ds["blind"]["candidate_chunks"], distilbert_tokenizer, distilbert_model)
 
     # Ensure we use the correct answer positions for the test set
     distilbert_results = hit_at_k(distilbert_query_embeddings, distilbert_candidate_embeddings, ds["test"]["answer_pos"], distance_metric='cosine')
@@ -106,12 +111,15 @@ def main():
     all_mini_results = hit_at_k(all_mini_query_embeddings, all_mini_candidate_embeddings, ds["test"]["answer_pos"], distance_metric='cosine')
     all_mini_results = {k: f"{v:.4f}" for k, v in all_mini_results.items()}
     print(f"Hit@K metrics results for the {all_mini}: {all_mini_results}")
-
+    
+    f2llm_results = hit_at_k(f2llm_query_embeddings, f2llm_candidate_embeddings, ds["test"]["answer_pos"], distance_metric = 'cosine')
+    print(f"Hit@K metrics results for the {f2llm}: {f2llm_results}")
+    
     data = {
         "Model": [distilbert, all_mini],
-        "Hit@1 ": [distilbert_results['Hit@1'], all_mini_results['Hit@1']],
-        "Hit@3": [distilbert_results['Hit@3'], all_mini_results['Hit@3']],
-        "Hit@5": [distilbert_results['Hit@5'], all_mini_results['Hit@5']]
+        "Hit@1 ": [distilbert_results['Hit@1'], all_mini_results['Hit@1'], f2llm_results['Hit@1']],
+        "Hit@3": [distilbert_results['Hit@3'], all_mini_results['Hit@3'], f2llm_results['Hit@3']],
+        "Hit@5": [distilbert_results['Hit@5'], all_mini_results['Hit@5'], f2llm_results['Hit@5']]
     }
     df_results = pd.DataFrame(data)
     display(df_results.style.format(precision=4).set_caption("Baselines Comparison").hide(axis='index'))
