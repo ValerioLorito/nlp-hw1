@@ -1,7 +1,10 @@
 venv/
 
+selected_models/
 models/
 embeddings/
+embeddings_test/
+embeddings_blind/
 predictions/
 
 __pycache__/

@@ -16,7 +16,7 @@ def evaluate_model(model_path, dataset, device, similarity):
     embedding_file = f"{model_name}_embeddings.pt"
 
     if os.path.exists("embeddings_test/" + embedding_file):
-        saved_embs = torch.load("embeddings/" + embedding_file, weights_only=True)
+        saved_embs = torch.load("embeddings_test/" + embedding_file, weights_only=True)
         test_query_embeddings = saved_embs["test_q"]
         test_candidates_embeddings = saved_embs["test_c"]
     else:

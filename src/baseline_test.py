@@ -116,7 +116,7 @@ def main():
     print(f"Hit@K metrics results for the {f2llm}: {f2llm_results}")
     
     data = {
-        "Model": [distilbert, all_mini],
+        "Model": [distilbert, all_mini, f2llm],
         "Hit@1 ": [distilbert_results['Hit@1'], all_mini_results['Hit@1'], f2llm_results['Hit@1']],
         "Hit@3": [distilbert_results['Hit@3'], all_mini_results['Hit@3'], f2llm_results['Hit@3']],
         "Hit@5": [distilbert_results['Hit@5'], all_mini_results['Hit@5'], f2llm_results['Hit@5']]
