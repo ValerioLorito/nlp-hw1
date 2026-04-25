@@ -72,6 +72,8 @@ def main():
     output_file = "dev_evaluation_results.txt"
     output_path = os.path.join("predictions", output_file)
 
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
     with open(output_path, 'w') as f:
         print(f"Model Evaluation Results (Cosine Similarity):\n")
         f.write("Model Evaluation Results:\n")
