@@ -28,8 +28,8 @@ def generate_jsonl(split_name, exports, query_ids, query_embeddings, candidate_e
     output_dir = os.path.join("predictions", split_name)
     os.makedirs(output_dir, exist_ok=True)
        
-    for variant, query_embeddings, candidate_embeddings, metric in exports:
-        filename = f"{group_name}-{split_name}-{variant}.jsonl"
+    for variant, query_embeddings, candidate_embeddings, similarity in exports:
+        filename = f"{group_name}-{split_name}-{variant}-{similarity}.jsonl"
         filepath = os.path.join(output_dir, filename)
         print(f"{filename} generation...")
-        create_jsonl(query_ids, query_embeddings, candidate_embeddings, filepath, metric)
+        create_jsonl(query_ids, query_embeddings, candidate_embeddings, filepath, similarity)
