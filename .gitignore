@@ -16,6 +16,7 @@ __pycache__/
 *.pt
 
 embeddings.pt
+its-always-loss-report.pdf
 
 .DS_Store
 
