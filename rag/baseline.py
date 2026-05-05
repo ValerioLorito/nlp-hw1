@@ -1,11 +1,14 @@
 import sys
 import os
 import torch
+from sentence_transformers import SentenceTransformer, util
+from transformers import AutoTokenizer
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from src.data_loader import load_data
+from src.baseline_test import embedding
 from rag.utils import load_model
 
 def baseline(model, tokenizer, query, device):
@@ -32,6 +35,42 @@ def baseline(model, tokenizer, query, device):
 
     return extracted_answer
 
+
+def get_top_k_chunks(query, candidate_chunks, retriever_model, k=3):  
+    query_embedding = retriever_model.encode(query, convert_to_tensor=True)
+    chunk_embeddings = retriever_model.encode(candidate_chunks, convert_to_tensor=True)
+    
+    similarity = util.semantic_search(query_embedding, chunk_embeddings, top_k=k)
+    
+    top_k_indices = [hit['corpus_id'] for hit in similarity[0]]
+    top_k_texts = [candidate_chunks[i] for i in top_k_indices]
+    
+    return top_k_texts, top_k_indices
+
+
+def baseline_rag(model, tokenizer, query, retrieved_passages, device):
+    context = "\n".join(retrieved_passages) # concatenation of retrieved passages
+    prompt = f"Context: {context}\n\nQuestion: {query}\nAnswer: "
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+
+    answer = model.generate(
+        **inputs,
+        max_new_tokens=50,
+        temperature=0.7, 
+        top_p=0.9, 
+        do_sample=True,
+        num_beams=1,
+    )
+
+    generated_answer = tokenizer.decode(answer[0], skip_special_tokens=True)
+
+    if "Answer:" in generated_answer:
+        extracted_answer = generated_answer.split("Answer:")[-1].strip()
+    else:
+        extracted_answer = generated_answer
+
+    return extracted_answer
+
 def main():
     ds = load_data()
     model_name = "google/flan-t5-small"  # You can change this to any other model you want to test
@@ -48,6 +87,29 @@ def main():
     print("Final Answers:")
     for query, answer in answers.items():
         print(f"Query: {query}\nAnswer: {answer}\n")
+
+
+    all_mini = 'sentence-transformers/all-MiniLM-L6-v2'
+    retriever_model = SentenceTransformer(all_mini, device=device)
+
+    answers_rag = {}
+
+    for i in range(5):
+        item = ds["test"][i]
+        query = item["query"]
+        candidate = item["candidate_chunks"]
+
+        retrieved_texts, retrieved_indices = get_top_k_chunks(query, candidate, retriever_model, k=3)
+
+        answer_rag = baseline_rag(model, tokenizer, query, retrieved_texts, device)
+        answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {item['answer']}"
+        
+    print("Final Answers:")
+    for query, answer in answers_rag.items():
+        print(f"Query: {query}\nRAG Answer: {answer}\n")
+
+
+
 
 if __name__ == "__main__":
     main()
