@@ -71,6 +71,27 @@ def baseline_rag(model, tokenizer, query, retrieved_passages, device):
 
     return extracted_answer
 
+def baseline_oracle(retrieved_chunks, retrieved_indices, gold_index):
+    indices_list = list(retrieved_indices)
+    chunks_list = list(retrieved_chunks)
+
+    if gold_index in indices_list:
+        # put it at first (index 0)
+        idx_in_list = indices_list.index(gold_index) 
+        gold_idx = indices_list.pop(idx_in_list)
+        gold_text = chunks_list.pop(idx_in_list)
+        indices_list.insert(0, gold_idx)
+        chunks_list.insert(0, gold_text)
+    else:
+        # delete the last one
+        indices_list.pop(-1)
+        chunks_list.pop(-1)
+        # add the gold one at first
+        indices_list.insert(0, gold_index)
+        chunks_list.insert(0, retrieved_chunks[gold_index])
+    
+    return chunks_list, indices_list
+
 def main():
     ds = load_data()
     model_name = "google/flan-t5-small"  # You can change this to any other model you want to test
@@ -102,12 +123,29 @@ def main():
         retrieved_texts, retrieved_indices = get_top_k_chunks(query, candidate, retriever_model, k=3)
 
         answer_rag = baseline_rag(model, tokenizer, query, retrieved_texts, device)
-        answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {item['answer']}"
+        answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {item['short_answer']}"
         
-    print("Final Answers:")
+    print("Final Answers RAG:")
     for query, answer in answers_rag.items():
         print(f"Query: {query}\nRAG Answer: {answer}\n")
 
+    answers_oracle = {}
+    for i in range(5):
+        item = ds["test"][i]
+        query = item["query"]
+        candidate = item["candidate_chunks"]
+        gold_indice = item["answer_pos"]
+        short_answer = item["short_answer"]
+
+        retrieved_texts, retrieved_indices = get_top_k_chunks(query, candidate, retriever_model, k=3)
+
+        retrieved_texts_oracle, retrieved_indices_oracle = baseline_oracle(retrieved_texts, retrieved_indices, gold_indice)
+        answer_oracle = baseline_rag(model, tokenizer, query, retrieved_texts_oracle, device)
+        answers_oracle[query] = f"Oracle Answer: {answer_oracle};\nReal Answer: {short_answer}"
+        
+    print("Final Answers Oracle:")
+    for query, answer in answers_oracle.items():
+        print(f"Query: {query}\nOracle Answer: {answer}\n")
 
 
 
