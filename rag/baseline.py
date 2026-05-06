@@ -1,14 +1,12 @@
 import sys
 import os
+import json
 import torch
-from sentence_transformers import SentenceTransformer, util
-from transformers import AutoTokenizer
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from src.data_loader import load_data
-from src.baseline_test import embedding
 from rag.utils import load_model
 
 def baseline(model, tokenizer, query, device):
@@ -36,22 +34,29 @@ def baseline(model, tokenizer, query, device):
     return extracted_answer
 
 
-def get_top_k_chunks(query, candidate_chunks, retriever_model, k=3):  
-    query_embedding = retriever_model.encode(query, convert_to_tensor=True)
-    chunk_embeddings = retriever_model.encode(candidate_chunks, convert_to_tensor=True)
+def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):  
+    top_k_indices = []
     
-    similarity = util.semantic_search(query_embedding, chunk_embeddings, top_k=k)
+    with open(jsonl_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            data = json.loads(line)
+            if query_id in data: 
+                top_k_indices = data[query_id][:k]
+                break
     
-    top_k_indices = [hit['corpus_id'] for hit in similarity[0]]
-    top_k_texts = [candidate_chunks[i] for i in top_k_indices]
+    top_k_chunks = []
+    for i in top_k_indices:
+        top_k_chunks.append(candidate_chunks[i])
     
-    return top_k_texts, top_k_indices
+    return top_k_chunks, top_k_indices
 
 
 def baseline_rag(model, tokenizer, query, retrieved_passages, device):
     context = "\n".join(retrieved_passages) # concatenation of retrieved passages
-    prompt = f"Context: {context}\n\nQuestion: {query}\nAnswer: "
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
+    prompt = (f"Answer to this question: {query}\n"
+             f"Given the following information: {context}\n"
+             f"Answer: ")
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=tokenizer.model_max_length).to(device)
 
     answer = model.generate(
         **inputs,
@@ -71,7 +76,7 @@ def baseline_rag(model, tokenizer, query, retrieved_passages, device):
 
     return extracted_answer
 
-def baseline_oracle(retrieved_chunks, retrieved_indices, gold_index):
+def baseline_oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
     indices_list = list(retrieved_indices)
     chunks_list = list(retrieved_chunks)
 
@@ -88,7 +93,7 @@ def baseline_oracle(retrieved_chunks, retrieved_indices, gold_index):
         chunks_list.pop(-1)
         # add the gold one at first
         indices_list.insert(0, gold_index)
-        chunks_list.insert(0, retrieved_chunks[gold_index])
+        chunks_list.insert(0, candidates[gold_index])
     
     return chunks_list, indices_list
 
@@ -110,40 +115,32 @@ def main():
         print(f"Query: {query}\nAnswer: {answer}\n")
 
 
-    all_mini = 'sentence-transformers/all-MiniLM-L6-v2'
-    retriever_model = SentenceTransformer(all_mini, device=device)
-
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    all_mini_jsonl = os.path.join(current_dir, "..", "predictions", "test", "Its_always_loss-test-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
     answers_rag = {}
-
-    for i in range(5):
-        item = ds["test"][i]
-        query = item["query"]
-        candidate = item["candidate_chunks"]
-
-        retrieved_texts, retrieved_indices = get_top_k_chunks(query, candidate, retriever_model, k=3)
-
-        answer_rag = baseline_rag(model, tokenizer, query, retrieved_texts, device)
-        answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {item['short_answer']}"
-        
-    print("Final Answers RAG:")
-    for query, answer in answers_rag.items():
-        print(f"Query: {query}\nRAG Answer: {answer}\n")
-
     answers_oracle = {}
+
     for i in range(5):
         item = ds["test"][i]
         query = item["query"]
+        query_id = item["query_id"]
         candidate = item["candidate_chunks"]
         gold_indice = item["answer_pos"]
         short_answer = item["short_answer"]
 
-        retrieved_texts, retrieved_indices = get_top_k_chunks(query, candidate, retriever_model, k=3)
+        retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
+        answer_rag = baseline_rag(model, tokenizer, query, retrieved_chunks, device)
+        answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {short_answer}"
 
-        retrieved_texts_oracle, retrieved_indices_oracle = baseline_oracle(retrieved_texts, retrieved_indices, gold_indice)
-        answer_oracle = baseline_rag(model, tokenizer, query, retrieved_texts_oracle, device)
+        retrieved_chunks_oracle, retrieved_indices_oracle = baseline_oracle(retrieved_chunks, retrieved_indices, gold_indice, candidate)
+        answer_oracle = baseline_rag(model, tokenizer, query, retrieved_chunks_oracle, device)
         answers_oracle[query] = f"Oracle Answer: {answer_oracle};\nReal Answer: {short_answer}"
         
-    print("Final Answers Oracle:")
+    print("------------Final Answers RAG:--------------")
+    for query, answer in answers_rag.items():
+        print(f"Query: {query}\nRAG Answer: {answer}\n")
+        
+    print("------------Final Answers Oracle:---------------")
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\nOracle Answer: {answer}\n")
 
