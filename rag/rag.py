@@ -52,7 +52,13 @@ def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):
 
 
 def rag(model, tokenizer, query, retrieved_passages, device):
-    context = "\n".join(retrieved_passages) # concatenation of retrieved passages
+    context = []
+    for index, passage in enumerate(retrieved_passages):
+        formatted_passage = f"Document {index+1}: {passage}"
+        context.append(formatted_passage)
+
+    context = "\n---\n".join(context) # concatenation of retrieved passages
+
     prompt = (f"Answer to this question: {query}\n"
              f"Given the following information: {context}\n"
              f"Answer: ")
