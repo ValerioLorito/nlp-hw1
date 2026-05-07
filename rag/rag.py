@@ -51,7 +51,7 @@ def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):
     return top_k_chunks, top_k_indices
 
 
-def baseline_rag(model, tokenizer, query, retrieved_passages, device):
+def rag(model, tokenizer, query, retrieved_passages, device):
     context = "\n".join(retrieved_passages) # concatenation of retrieved passages
     prompt = (f"Answer to this question: {query}\n"
              f"Given the following information: {context}\n"
@@ -76,7 +76,7 @@ def baseline_rag(model, tokenizer, query, retrieved_passages, device):
 
     return extracted_answer
 
-def baseline_oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
+def oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
     indices_list = list(retrieved_indices)
     chunks_list = list(retrieved_chunks)
 
@@ -129,11 +129,11 @@ def main():
         short_answer = item["short_answer"]
 
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
-        answer_rag = baseline_rag(model, tokenizer, query, retrieved_chunks, device)
+        answer_rag = rag(model, tokenizer, query, retrieved_chunks, device)
         answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {short_answer}"
 
-        retrieved_chunks_oracle, retrieved_indices_oracle = baseline_oracle(retrieved_chunks, retrieved_indices, gold_indice, candidate)
-        answer_oracle = baseline_rag(model, tokenizer, query, retrieved_chunks_oracle, device)
+        retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_indice, candidate)
+        answer_oracle = rag(model, tokenizer, query, retrieved_chunks_oracle, device)
         answers_oracle[query] = f"Oracle Answer: {answer_oracle};\nReal Answer: {short_answer}"
         
     print("------------Final Answers RAG:--------------")
