@@ -7,7 +7,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from src.data_loader import load_data
-from rag.utils import load_model
+from utils import load_model
 
 def baseline(model, tokenizer, query, device):
     prompt = f"Question: {query}\nAnswer: "
@@ -24,7 +24,6 @@ def baseline(model, tokenizer, query, device):
     )
 
     generated_answer = tokenizer.decode(answer[0], skip_special_tokens=True)
-    print(f"Generated Answer: {generated_answer}\n")
 
     if "Answer:" in generated_answer:
         extracted_answer = generated_answer.split("Answer:")[-1].strip()
@@ -59,8 +58,9 @@ def rag(model, tokenizer, query, retrieved_passages, device):
 
     context = "\n---\n".join(context) # concatenation of retrieved passages
 
-    prompt = (f"Answer to this question: {query}\n"
-             f"Given the following information: {context}\n"
+    prompt = (f"You are an expert in question answering. Given a set of retrieved documents, provide a concise and correct answer to the question.\n\n"
+             f"Context: {context}\n"
+             f"Question: {query}\n" # The question is being inserted after the context to avoid "Lost in the middle" issues
              f"Answer: ")
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=tokenizer.model_max_length).to(device)
 
@@ -105,52 +105,68 @@ def oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
 
 def main():
     ds = load_data()
-    model_name = "google/flan-t5-small"  # You can change this to any other model you want to test
-    
-    model, tokenizer, device = load_model(model_name, "seq2seq")  # Assuming it's a seq2seq model, change if needed
+
+    t5_model = "google/flan-t5-large"  # You can change this to any other model you want to test
+    t5_model, t5_tokenizer, t5_device = load_model(t5_model, "seq2seq") # Flan-T5 is a seq2seq model, so we specify "seq2seq" here
+   
+    llama_model = "meta-llama/Llama-3.2-1b-instruct"  # You can change this to any other model you want to test
+    llama_model, llama_tokenizer, llama_device = load_model(llama_model, "causal") # LLaMA is a causal model, so we specify "causal" here
+
     queries = ds["test"]["query"]
 
     answers = {}
 
+    # Baseline pipeline
     for query in queries[:5]: # Limit to the first 5 queries for testing
-        answer = baseline(model, tokenizer, query, device)
-        answers[query] = f"Model Answer: {answer}; Real Answer: {ds['test']['answer'][queries.index(query)]}" # Store both model and real answers for comparison
+        item = ds["test"][queries.index(query)]
+        short_answer = item["short_answer"]
 
-    print("Final Answers:")
+        t5_answer = baseline(t5_model, t5_tokenizer, query, t5_device)
+        llama_answer = baseline(llama_model, llama_tokenizer, query, llama_device)
+
+        answers[query] = f"1st Model Answer: {t5_answer}\n2nd Model Answer: {llama_answer}\nReal Answer: {short_answer}" # Store real answer
+
+    print("------------Final Answers (Baseline):------------")
     for query, answer in answers.items():
-        print(f"Query: {query}\nAnswer: {answer}\n")
+        print(f"Query: {query}\n{answer}\n")
 
-
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    all_mini_jsonl = os.path.join(current_dir, "..", "predictions", "test", "Its_always_loss-test-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
+    # RAG and Oracle pipeline
+    PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
+    all_mini_jsonl = os.path.join(PREDICTIONS_DIR, "test", "Its_always_loss-test-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
     answers_rag = {}
-    answers_oracle = {}
+    answers_oracle = {} 
 
-    for i in range(5):
-        item = ds["test"][i]
+    for query in queries[:5]: # Limit to the first 5 queries for testing
+        item = ds["test"][queries.index(query)]
         query = item["query"]
         query_id = item["query_id"]
         candidate = item["candidate_chunks"]
-        gold_indice = item["answer_pos"]
+        gold_index = item["answer_pos"]
         short_answer = item["short_answer"]
 
+        # RAG pipeline
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
-        answer_rag = rag(model, tokenizer, query, retrieved_chunks, device)
-        answers_rag[query] = f"RAG Answer: {answer_rag};\nReal Answer: {short_answer}"
-
-        retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_indice, candidate)
-        answer_oracle = rag(model, tokenizer, query, retrieved_chunks_oracle, device)
-        answers_oracle[query] = f"Oracle Answer: {answer_oracle};\nReal Answer: {short_answer}"
         
-    print("------------Final Answers RAG:--------------")
+        t5_answer_rag = rag(t5_model, t5_tokenizer, query, retrieved_chunks, t5_device)
+        llama_answer_rag = rag(llama_model, llama_tokenizer, query, retrieved_chunks, llama_device)
+
+        answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
+
+        # Oracle pipeline
+        retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_index, candidate)
+        
+        t5_answer_oracle = rag(t5_model, t5_tokenizer, query, retrieved_chunks_oracle, t5_device)
+        llama_answer_oracle = rag(llama_model, llama_tokenizer, query, retrieved_chunks_oracle, llama_device)
+
+        answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
+        
+    print("------------Final Answers (RAG):--------------")
     for query, answer in answers_rag.items():
-        print(f"Query: {query}\nRAG Answer: {answer}\n")
+        print(f"Query: {query}\n{answer}\n")
         
-    print("------------Final Answers Oracle:---------------")
+    print("------------Final Answers (Oracle):---------------")
     for query, answer in answers_oracle.items():
-        print(f"Query: {query}\nOracle Answer: {answer}\n")
-
-
+        print(f"Query: {query}\n{answer}\n")
 
 if __name__ == "__main__":
     main()
