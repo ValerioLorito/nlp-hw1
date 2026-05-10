@@ -68,6 +68,12 @@ def rag(model, tokenizer, query, wikidata_id, retrieved_passages, device):
              f"Answer: ")
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=tokenizer.model_max_length).to(device)
 
+    truncated_prompt = tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=False)
+    print("\n--- FINAL PROMPT SEND TO THE MODEL ---")
+    print(truncated_prompt)
+    print("-------------------------------------------------------------------\n")
+
+
     answer = model.generate(
         **inputs,
         max_new_tokens=50,
