@@ -66,10 +66,10 @@ def rag(model, tokenizer, query, wikidata_id, retrieved_passages, device):
              f"Context: {context}\n"
              f"Question: {query}\n" # The question is being inserted after the context to avoid "Lost in the middle" issues
              f"Answer: ")
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=tokenizer.model_max_length).to(device)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length= tokenizer.model_max_length if tokenizer.model_max_length >= 1536 else 1536).to(device)
 
     truncated_prompt = tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=False)
-    print("\n--- FINAL PROMPT SEND TO THE MODEL ---")
+    print(f"\n--- FINAL PROMPT SEND TO THE MODEL {model.__class__.__name__} ---")
     print(truncated_prompt)
     print("-------------------------------------------------------------------\n")
 
