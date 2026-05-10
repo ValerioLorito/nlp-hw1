@@ -51,7 +51,6 @@ def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):
 
 
 def rag(model, tokenizer, query, wikidata_id, retrieved_passages, device):
-    print(" max_length : {tokenizer.model_max_length}")
     context = []
     for index, passage in enumerate(retrieved_passages):
         formatted_passage = f"Document {index+1}: {passage}"
