@@ -7,3 +7,4 @@ datasets
 transformers
 sentence_transformers
 scikit-learn
+nltk

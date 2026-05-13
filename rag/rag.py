@@ -7,7 +7,8 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from src.data_loader import load_data
-from utils import load_model, get_wikidata_entity
+from utils import load_model
+from wikidata_utils import get_wikidata_entity
 
 def baseline(model, tokenizer, query, device):
     prompt = f"Question: {query}\nAnswer: "
