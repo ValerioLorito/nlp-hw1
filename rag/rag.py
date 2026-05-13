@@ -1,7 +1,7 @@
 import sys
 import os
 import json
-import torch
+from evaluation import evaluate_all
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
@@ -69,7 +69,7 @@ def rag(model, tokenizer, query, wikidata_id, retrieved_passages, device):
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length= tokenizer.model_max_length if tokenizer.model_max_length >= 1536 else 1536).to(device)
 
     truncated_prompt = tokenizer.decode(inputs["input_ids"][0], skip_special_tokens=False)
-    print(f"\n--- FINAL PROMPT SEND TO THE MODEL {model.__class__.__name__} ---")
+    print(f"\n--- FINAL PROMPT SENT TO THE MODEL {model.__class__.__name__} ---")
     print(truncated_prompt)
     print("-------------------------------------------------------------------\n")
 
@@ -126,6 +126,7 @@ def main():
     wikidata_ids = ds["test"]["wikidata_id"]
 
     answers = {}
+    scores= {}
 
     # Baseline pipeline
     for query in queries[:5]: # Limit to the first 5 queries for testing
@@ -136,16 +137,21 @@ def main():
         llama_answer = baseline(llama_model, llama_tokenizer, query, llama_device)
 
         answers[query] = f"1st Model Answer: {t5_answer}\n2nd Model Answer: {llama_answer}\nReal Answer: {short_answer}" # Store real answer
+        t5_scores = evaluate_all(t5_answer, short_answer)
+        llama_scores = evaluate_all(llama_answer, short_answer)
+        scores[query] = f"1st Model Scores: {t5_scores}\n2nd Model Scores: {llama_scores}"
 
     print("------------Final Answers (Baseline):------------")
     for query, answer in answers.items():
-        print(f"Query: {query}\n{answer}\n")
+        print(f"Query: {query}\n{answer}\n{scores[query]}\n")
 
     # RAG and Oracle pipeline
     PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
     all_mini_jsonl = os.path.join(PREDICTIONS_DIR, "test", "Its_always_loss-test-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
     answers_rag = {}
+    scores_rag = {}
     answers_oracle = {} 
+    scores_oracle = {}
 
     for query in queries[:5]: # Limit to the first 5 queries for testing
         item = ds["test"][queries.index(query)]
@@ -164,6 +170,11 @@ def main():
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
+        t5_scores_rag = evaluate_all(t5_answer_rag, short_answer)
+        llama_scores_rag = evaluate_all(llama_answer_rag, short_answer)
+
+        scores_rag[query] = f"1st Model Scores: {t5_scores_rag}\n2nd Model Scores: {llama_scores_rag}"
+
         # Oracle pipeline
         retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_index, candidate)
         
@@ -172,13 +183,23 @@ def main():
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
+        t5_scores_oracle = evaluate_all(t5_answer_oracle, short_answer)
+        llama_scores_oracle = evaluate_all(llama_answer_oracle, short_answer)
+
+        scores_oracle[query] = f"1st Model Scores: {t5_scores_oracle}\n2nd Model Scores: {llama_scores_oracle}"
+    
+
+
     print("------------Final Answers (RAG):--------------")
     for query, answer in answers_rag.items():
-        print(f"Query: {query}\n{answer}\n")
+        print(f"Query: {query}\n{answer}\n{scores_rag[query]}\n")
         
     print("------------Final Answers (Oracle):---------------")
     for query, answer in answers_oracle.items():
-        print(f"Query: {query}\n{answer}\n")
+        print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
+
+
+
 
 if __name__ == "__main__":
     main()
