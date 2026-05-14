@@ -2,6 +2,7 @@ import sys
 import os
 import json
 from evaluation import evaluate_all
+from output_files import generate_jsonl_file
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
@@ -31,7 +32,7 @@ def baseline(model, tokenizer, query, device):
     else:
         extracted_answer = generated_answer
 
-    return extracted_answer
+    return extracted_answer, prompt
 
 
 def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):  
@@ -91,7 +92,7 @@ def rag(model, tokenizer, query, wikidata_id, retrieved_passages, device):
     else:
         extracted_answer = generated_answer
 
-    return extracted_answer
+    return extracted_answer, truncated_prompt
 
 def oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
     indices_list = list(retrieved_indices)
@@ -198,6 +199,27 @@ def main():
     print("------------Final Answers (Oracle):---------------")
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
+
+    #jsonl generation
+    all_results = []
+    for query in queries[:5]: # Limit to the first 5 queries for testing
+        item = ds["test"][queries.index(query)]
+        query_id = item["query_id"]
+        candidate = item["candidate_chunks"]
+        wikidata = item["wikidata_id"]
+        retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
+        generated_answer, augmented_prompt = rag(t5_model, t5_tokenizer, query, wikidata, retrieved_chunks, t5_device)
+
+        all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices,
+            "augmented_prompt": augmented_prompt,
+            "generated_answer": generated_answer
+        })
+    generate_jsonl_file(all_results, "test", "flan-t5-large", "RAG")
+
+    
+        
 
 
 
