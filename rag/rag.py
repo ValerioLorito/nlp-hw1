@@ -51,13 +51,12 @@ def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):
     return top_k_chunks, top_k_indices
 
 
-def rag(model, tokenizer, query, wikidata_id, retrieved_passages, device):
+def rag(model, tokenizer, query, wikidata_info, retrieved_passages, device):
     context = []
     for index, passage in enumerate(retrieved_passages):
         formatted_passage = f"Document {index+1}: {passage}"
         context.append(formatted_passage)
-
-    wikidata_info = get_wikidata_entity(wikidata_id)
+    
     if wikidata_info:
         context.append(wikidata_info)
 
@@ -163,11 +162,16 @@ def main():
         short_answer = item["short_answer"]
         wikidata_id = item["wikidata_id"]
 
+        wikidata_info = get_wikidata_entity(wikidata_id)
+
+        print(f"\n--- WIKIDATA INFORMATION RETRIEVED FOR ENTITY {wikidata_id} ---")
+        print(wikidata_info)
+
         # RAG pipeline
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
         
-        t5_answer_rag = rag(t5_model, t5_tokenizer, query, wikidata_id, retrieved_chunks, t5_device)
-        llama_answer_rag = rag(llama_model, llama_tokenizer, query, wikidata_id, retrieved_chunks, llama_device)
+        t5_answer_rag = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks, t5_device)
+        llama_answer_rag = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks, llama_device)
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
@@ -179,8 +183,8 @@ def main():
         # Oracle pipeline
         retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_index, candidate)
         
-        t5_answer_oracle = rag(t5_model, t5_tokenizer, query, wikidata_id, retrieved_chunks_oracle, t5_device)
-        llama_answer_oracle = rag(llama_model, llama_tokenizer, query, wikidata_id, retrieved_chunks_oracle, llama_device)
+        t5_answer_oracle = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_oracle, t5_device)
+        llama_answer_oracle = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks_oracle, llama_device)
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
