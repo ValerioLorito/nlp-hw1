@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+from tqdm import tqdm
 from evaluation import evaluate_all
 from output_files import generate_jsonl_file
 
@@ -23,6 +24,7 @@ def baseline(model, tokenizer, query, device):
         top_p=0.9, # Use nucleus sampling to keep the most probable tokens (not fixed)
         do_sample=True,
         num_beams=1, # No beam search needed, we want a "strict" answer
+        pad_token_id=tokenizer.eos_token_id
     )
 
     generated_answer = tokenizer.decode(answer[0], skip_special_tokens=True)
@@ -82,6 +84,7 @@ def rag(model, tokenizer, query, wikidata_info, retrieved_passages, device):
         top_p=0.9, 
         do_sample=True,
         num_beams=1,
+        pad_token_id=tokenizer.eos_token_id
     )
 
     generated_answer = tokenizer.decode(answer[0], skip_special_tokens=True)
@@ -117,20 +120,20 @@ def oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
 def main():
     ds = load_data()
 
+    queries = ds["test"]["query"]
+    wikidata_ids = ds["test"]["wikidata_id"]
+
     t5_model = "google/flan-t5-large"  # You can change this to any other model you want to test
     t5_model, t5_tokenizer, t5_device = load_model(t5_model, "seq2seq") # Flan-T5 is a seq2seq model, so we specify "seq2seq" here
    
     llama_model = "meta-llama/Llama-3.2-1b-instruct"  # You can change this to any other model you want to test
     llama_model, llama_tokenizer, llama_device = load_model(llama_model, "causal") # LLaMA is a causal model, so we specify "causal" here
 
-    queries = ds["test"]["query"]
-    wikidata_ids = ds["test"]["wikidata_id"]
-
     answers = {}
     scores= {}
 
     # Baseline pipeline
-    for query in queries[:5]: # Limit to the first 5 queries for testing
+    for query in tqdm(queries, desc="Baseline Pipeline Processing"): # Limit to the first 5 queries for testing
         item = ds["test"][queries.index(query)]
         short_answer = item["short_answer"]
 
@@ -158,7 +161,7 @@ def main():
     t5_oracle_all_results = []
     llama_oracle_all_results = []
 
-    for query in queries[:5]: # Limit to the first 5 queries for testing
+    for query in tqdm(queries, desc="Baseline Pipeline Procesing"): # Limit to the first 5 queries for testing
         item = ds["test"][queries.index(query)]
         query = item["query"]
         query_id = item["query_id"]
