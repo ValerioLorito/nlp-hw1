@@ -2,6 +2,7 @@ import sys
 import os
 import json
 from evaluation import evaluate_all
+from output_files import generate_jsonl_file
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
@@ -90,7 +91,7 @@ def rag(model, tokenizer, query, wikidata_info, retrieved_passages, device):
     else:
         extracted_answer = generated_answer
 
-    return extracted_answer
+    return extracted_answer, truncated_prompt
 
 def oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
     indices_list = list(retrieved_indices)
@@ -152,6 +153,10 @@ def main():
     scores_rag = {}
     answers_oracle = {} 
     scores_oracle = {}
+    t5_rag_all_results = []
+    llama_rag_all_results = []
+    t5_oracle_all_results = []
+    llama_oracle_all_results = []
 
     for query in queries[:5]: # Limit to the first 5 queries for testing
         item = ds["test"][queries.index(query)]
@@ -170,8 +175,8 @@ def main():
         # RAG pipeline
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
         
-        t5_answer_rag = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks, t5_device)
-        llama_answer_rag = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks, llama_device)
+        t5_answer_rag, t5_augmented_prompt = rag(t5_model, t5_tokenizer, query, wikidata_id, retrieved_chunks, t5_device)
+        llama_answer_rag, llama_augmented_prompt = rag(llama_model, llama_tokenizer, query, wikidata_id, retrieved_chunks, llama_device)
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
@@ -180,11 +185,25 @@ def main():
 
         scores_rag[query] = f"1st Model Scores: {t5_scores_rag}\n2nd Model Scores: {llama_scores_rag}"
 
+        t5_rag_all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices,
+            "augmented_prompt": t5_augmented_prompt,
+            "generated_answer": t5_answer_rag
+        })
+
+        llama_rag_all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices,
+            "augmented_prompt": llama_augmented_prompt,
+            "generated_answer": llama_answer_rag
+        })
+
         # Oracle pipeline
         retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_index, candidate)
         
-        t5_answer_oracle = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_oracle, t5_device)
-        llama_answer_oracle = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks_oracle, llama_device)
+        t5_answer_oracle, t5_oracle_augmented_prompt = rag(t5_model, t5_tokenizer, query, wikidata_id, retrieved_chunks_oracle, t5_device)
+        llama_answer_oracle, llama_oracle_augmented_prompt = rag(llama_model, llama_tokenizer, query, wikidata_id, retrieved_chunks_oracle, llama_device)
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
@@ -192,8 +211,20 @@ def main():
         llama_scores_oracle = evaluate_all(llama_answer_oracle, short_answer)
 
         scores_oracle[query] = f"1st Model Scores: {t5_scores_oracle}\n2nd Model Scores: {llama_scores_oracle}"
-    
 
+        t5_oracle_all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices_oracle,
+            "augmented_prompt": t5_oracle_augmented_prompt,
+            "generated_answer": t5_answer_oracle
+        })
+
+        llama_oracle_all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices_oracle,
+            "augmented_prompt": llama_oracle_augmented_prompt,
+            "generated_answer": llama_answer_oracle
+        })
 
     print("------------Final Answers (RAG):--------------")
     for query, answer in answers_rag.items():
@@ -203,7 +234,11 @@ def main():
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
 
-
+    generate_jsonl_file(t5_rag_all_results, "test", "flan-t5-large", "RAG", "generated_responses")
+    generate_jsonl_file(llama_rag_all_results, "test", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
+    generate_jsonl_file(t5_oracle_all_results, "test", "flan-t5-large", "Oracle", "generated_responses")
+    generate_jsonl_file(llama_oracle_all_results, "test", "Llama-3.2-1b-instruct", "Oracle", "generated_responses")
+    
 
 
 if __name__ == "__main__":

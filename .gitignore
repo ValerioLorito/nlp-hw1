@@ -6,6 +6,7 @@ embeddings/
 embeddings_test/
 embeddings_blind/
 predictions/
+HW2/
 
 __pycache__/
 *.pyc
