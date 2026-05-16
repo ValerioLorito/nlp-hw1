@@ -164,3 +164,61 @@ def fetch_property(claims, selected_properties, ids_to_fetch, needs_gold=False):
                     selected_properties.append({"property": prop_name, "value": val_data})
 
     return selected_properties, ids_to_fetch
+
+def get_wikidata_ground_truth(wikidata_id, short_answer):
+    answers = set()
+    answers.add(short_answer.strip().lower())
+
+    url = "https://www.wikidata.org/w/api.php"
+    headers = {
+        "User-Agent": "NLPHomework Bot (lorito.1885657@studenti.uniroma1.it)
+    }
+
+    params = {
+        "action": "wbgetentities",
+        "ids": wikidata_id,
+        "format": "json",
+        "languages": "en",
+        "props": "claims"
+    }
+
+    response = requests.get(url, params=params, headers=headers)
+    response.raise_for_status()
+    data = response.json()
+    entity = data.get("entities", {}).get(wikidata_id, {})
+
+    properties = get_entity_properties(wikidata_id, entity)
+
+    match = None
+
+    for prop in properties:
+        if "entity" in prop:
+            if  short_answer.strip().lower() in prop["entity"].strip().lower() or prop["entity"].strip().lower() in short_answer.strip().lower():
+                match = prop.get("val_id")
+                break
+
+    if match:
+        params = {
+            "action": "wbgetentities",
+            "ids": match,
+            "format": "json",
+            "languages": "en",
+            "props": "labels | alises"
+        }
+
+        response = requests.get(url, params=params, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        entity = data.get("entities", {}).get(match, {})
+        
+        label = entity.get("labels", {}).get("en", {}).get("value", None)
+        if label and label not in answers:
+            answers.add(label.strip().lower())
+
+        aliases = entity.get("aliases", {}).get("en", [])
+        for alias in aliases:
+            alias_value = alias.get("value", "").strip().lower()
+            if alias_value and alias_value not in answers:
+                answers.add(alias_value)
+
+    return answers
