@@ -21,10 +21,10 @@ def compute_meteor(prediction, ground_truths):
         scores.append(meteor_score([ground_truth_tokens], prediction_tokens))
     return max(scores) if scores else 0
 
-def evaluate_all(prediction, ground_truth): # prediction is a string and ground_truth is a list !!!! (but composed of 1 element)
+def evaluate_all(prediction, ground_truth): # prediction is a string and ground_truth is a list !!!!
     return {
         "EM" : (compute_exact_match(prediction, ground_truth)),
         "subEM" : (compute_sub_EM(prediction, ground_truth)),
         "METEOR" : (compute_meteor(prediction, ground_truth))
     }
-    
+
