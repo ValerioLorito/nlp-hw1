@@ -250,7 +250,6 @@ def main():
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
 
-
     generate_jsonl_file(t5_rag_all_results, "all-test", "flan-t5-large", "RAG", "generated_responses")
     generate_jsonl_file(llama_rag_all_results, "all-test", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
     generate_jsonl_file(t5_oracle_all_results, "all-test", "flan-t5-large", "Oracle", "generated_responses")
