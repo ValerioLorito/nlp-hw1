@@ -6,13 +6,13 @@ embeddings/
 embeddings_test/
 embeddings_blind/
 predictions/
+results/
 
 
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.jsonl
 *.txt
 *.pt
 
