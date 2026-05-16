@@ -10,7 +10,7 @@ sys.path.append(parent_dir)
 
 from src.data_loader import load_data
 from utils import load_model
-from wikidata_utils import get_wikidata_entity
+from wikidata_utils import get_wikidata_entity, get_wikidata_ground_truth
 
 def baseline(model, tokenizer, query, device):
     prompt = f"Question: {query}\nAnswer: "
