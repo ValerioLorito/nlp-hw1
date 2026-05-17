@@ -30,16 +30,16 @@ def evaluate_all(prediction, ground_truth): # prediction is a string and ground_
         "METEOR" : (compute_meteor(prediction, ground_truth))
     }
 
-def judge_answers(evaluator, query, llm_answer, short_answer):
+def judge_answers(evaluator, tokenizer, device, query, llm_answer, short_answer):
     prompt = ("Given an answer to a query, assess if the answer is correct or not with respect to the gold (short) answer. Answer with '1' for Correct or '0' for Incorrect.\n\n"
               f"Query: {query}\n"
               f"LLM Answer: {llm_answer}\n"
               f"Short Answer: {short_answer}\n"
               "Evaluation:")
     
-    inputs = prometheus_tokenizer(prompt, return_tensors="pt", truncation=True).to(prometheus_device)
+    inputs = tokenizer(prompt, return_tensors="pt", truncation=True).to(device)
     
-    judgement = prometheus_model.generate(**inputs, max_new_tokens=10)
+    judgement = evaluator.generate(**inputs, max_new_tokens=10)
 
     return judgement
 
@@ -48,6 +48,7 @@ def main():
     
     ds = load_data()
     queries = ds["test"]["query"]
+
     t5_answers = "answers/Its_always_loss-test-flan-t5-large-RAG.jsonl"
     llama_answers = "answers/Its_always_loss-llama-3.2-1b-instruct-RAG.jsonl"
 
@@ -58,7 +59,7 @@ def main():
         query = item["query"]
         short_answer = item["short_answer"]
 
-        judgement = judge_answers(prometheus_model, query, t5_answers[queries.index(query)][generated_answer], short_answer)
+        judgement = judge_answers(prometheus_model, prometheus_tokenizer, prometheus_device, query, t5_answers[queries.index(query)][generated_answer], short_answer)
 
         judgements.append(judgement)
 
