@@ -171,7 +171,7 @@ def get_wikidata_ground_truth(wikidata_id, short_answer):
 
     url = "https://www.wikidata.org/w/api.php"
     headers = {
-        "User-Agent": "NLPHomework Bot (lorito.1885657@studenti.uniroma1.it)
+        "User-Agent": "NLPHomework Bot (lorito.1885657@studenti.uniroma1.it)"
     }
 
     params = {

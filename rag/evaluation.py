@@ -2,6 +2,9 @@ import nltk
 from nltk.translate.meteor_score import meteor_score
 
 from utils import load_model
+from src.data_loader import load_data
+import os
+import sys
 
 def compute_exact_match(prediction, ground_truths):
     for ground_truth in ground_truths:

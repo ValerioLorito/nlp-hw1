@@ -10,7 +10,7 @@ sys.path.append(parent_dir)
 
 from src.data_loader import load_data
 from utils import load_model
-from wikidata_utils import get_wikidata_entity
+from wikidata_utils import get_wikidata_entity, get_wikidata_ground_truth
 
 def baseline(model, tokenizer, query, device):
     prompt = f"Question: {query}\nAnswer: "
@@ -173,6 +173,9 @@ def main():
 
         wikidata_info = get_wikidata_entity(wikidata_id)
 
+        #print(f"\n--- WIKIDATA INFORMATION RETRIEVED FOR ENTITY {wikidata_id} ---")
+        #print(wikidata_info)
+
         # RAG pipeline
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
         
@@ -247,13 +250,11 @@ def main():
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
 
-    generate_jsonl_file(t5_rag_all_results, "test", "flan-t5-large", "RAG", "generated_responses")
-    generate_jsonl_file(llama_rag_all_results, "test", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
-    generate_jsonl_file(t5_oracle_all_results, "test", "flan-t5-large", "Oracle", "generated_responses")
-    generate_jsonl_file(llama_oracle_all_results, "test", "Llama-3.2-1b-instruct", "Oracle", "generated_responses")
-
+    generate_jsonl_file(t5_rag_all_results, "all-test", "flan-t5-large", "RAG", "generated_responses")
+    generate_jsonl_file(llama_rag_all_results, "all-test", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
+    generate_jsonl_file(t5_oracle_all_results, "all-test", "flan-t5-large", "Oracle", "generated_responses")
+    generate_jsonl_file(llama_oracle_all_results, "all-test", "Llama-3.2-1b-instruct", "Oracle", "generated_responses")
     
-
 
 if __name__ == "__main__":
     main()
