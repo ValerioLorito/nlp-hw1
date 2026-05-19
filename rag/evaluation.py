@@ -133,7 +133,7 @@ def main():
     short_answers = ds["test"]["short_answer"]
 
     evaluate_generations("t5", query_ids, short_answers, "rag/answers/Its_always_loss-test-flan-t5-large-RAG.jsonl")
-    evaluate_generations("llama", query_ids, short_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-RAG.jsonl")
+    evaluate_generations("llama", query_ids, short_answers, "rag/answers/Its_always_loss-test-Llama-3.2-1b-instruct-RAG.jsonl")
 
     #judgements = judge_model("t5", queries)
 

@@ -1,5 +1,6 @@
 import os
 import json
+import pandas as pd
 
 def create_jsonl_file(results, filepath, type):
     with open(filepath, 'w', encoding='utf-8') as f:
@@ -22,7 +23,7 @@ def create_jsonl_file(results, filepath, type):
                     "annotator_2": result["annotator_2"]
                 }
 
-            f.write(json.dumps(json_record) + '\n')
+            f.write(json.dumps(json_record, ensure_ascii=False) + '\n')
 
 def generate_jsonl_file(results, split_name, model_name, setting, type):
     group_name = "Its_always_loss"
@@ -35,5 +36,27 @@ def generate_jsonl_file(results, split_name, model_name, setting, type):
     filepath = os.path.join(output_dir, filename)
     print(f"{filename} generation...")
     create_jsonl_file(results, filepath, type)
-    
 
+def export_judge_to_excel(jsonl_filepath, excel_filepath):
+    records = []
+    
+    with open(jsonl_filepath, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                record = json.loads(line)
+                row = {
+                    "Query ID": record.get("query_id", ""),
+                    "Chunks": str(record.get("retrieved_chunks", [])),
+                    "Augmented Prompt": record.get("augmented_prompt", ""),
+                    "Generated answer": record.get("generated_answer", ""),
+                    "LLM Judge Score": record.get("llm_judge", 0),
+                    "Annotator 1": "", 
+                    "Annotator 2": "" 
+                }
+                records.append(row)
+                
+    df = pd.DataFrame(records)
+    
+    df.to_excel(excel_filepath, sheet_name="Jugements", index=False)
+    
+    print(f"excel file saved : {excel_filepath}")
