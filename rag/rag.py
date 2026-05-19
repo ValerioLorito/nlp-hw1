@@ -122,7 +122,6 @@ def main():
     ds = load_data()
 
     queries = ds["test"]["query"]
-    wikidata_ids = ds["test"]["wikidata_id"]
 
     t5_model = "google/flan-t5-large"  # You can change this to any other model you want to test
     t5_model, t5_tokenizer, t5_device = load_model(t5_model, "seq2seq") # Flan-T5 is a seq2seq model, so we specify "seq2seq" here
@@ -130,8 +129,11 @@ def main():
     llama_model = "meta-llama/Llama-3.2-1b-instruct"  # You can change this to any other model you want to test
     llama_model, llama_tokenizer, llama_device = load_model(llama_model, "causal") # LLaMA is a causal model, so we specify "causal" here
 
-    answers = {}
-    scores= {}
+    answers_baseline = {}
+    scores_baseline = {}
+
+    t5_baseline_all_results = []
+    llama_baseline_all_results = []
 
     # Baseline pipeline
     for query in tqdm(queries, desc="Baseline Pipeline Processing"): # Limit to the first 5 queries for testing
@@ -141,14 +143,35 @@ def main():
         t5_answer = baseline(t5_model, t5_tokenizer, query, t5_device)
         llama_answer = baseline(llama_model, llama_tokenizer, query, llama_device)
 
-        answers[query] = f"1st Model Answer: {t5_answer}\n2nd Model Answer: {llama_answer}\nReal Answer: {short_answer}" # Store real answer
-        t5_scores = evaluate_all(t5_answer, short_answer)
-        llama_scores = evaluate_all(llama_answer, short_answer)
-        scores[query] = f"1st Model Scores: {t5_scores}\n2nd Model Scores: {llama_scores}"
+        answers_baseline[query] = f"1st Model Answer: {t5_answer}\n2nd Model Answer: {llama_answer}\nReal Answer: {short_answer}" # Store real answer
+
+        llama_scores_baseline = evaluate_all(llama_answer, wikidata_answers)
+        t5_scores_baseline = evaluate_all(t5_answer, wikidata_answers)
+
+        scores_baseline[query] = f"1st Model Scores: {t5_scores_baseline}\n2nd Model Scores: {llama_scores_baseline}"
+
+        t5_baseline_all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices,
+            "augmented_prompt": t5_augmented_prompt,
+            "generated_answer": t5_answer_rag,
+            "scores": t5_scores_baseline
+        })
+
+        llama_baseline_all_results.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices,
+            "augmented_prompt": llama_augmented_prompt,
+            "generated_answer": llama_answer_rag,
+            "scores": llama_scores_baseline
+        })
 
     print("------------Final Answers (Baseline):------------")
-    for query, answer in answers.items():
-        print(f"Query: {query}\n{answer}\n{scores[query]}\n")
+    for query, answer in answers_baseline.items():
+        print(f"Query: {query}\n{answer}\n{scores_baseline[query]}\n")
+
+    generate_jsonl_file(t5_baseline_all_results, "all-test", "flan-t5-large", "Baseline", "generated_responses")
+    generate_jsonl_file(llama_baseline_all_results, "all-test", "Llama-3.2-1b-instruct", "Baseline", "generated_responses")
 
     # RAG and Oracle pipeline
     PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
@@ -173,8 +196,8 @@ def main():
 
         wikidata_info = get_wikidata_entity(wikidata_id)
 
-        #print(f"\n--- WIKIDATA INFORMATION RETRIEVED FOR ENTITY {wikidata_id} ---")
-        #print(wikidata_info)
+        # Wikidata ground truth evaluation
+        wikidata_answers = get_wikidata_ground_truth(wikidata_id, short_answer)
 
         # RAG pipeline
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
@@ -184,23 +207,25 @@ def main():
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
-        t5_scores_rag = evaluate_all(t5_answer_rag, short_answer)
-        llama_scores_rag = evaluate_all(llama_answer_rag, short_answer)
+        llama_scores_wikidata_rag = evaluate_all(llama_answer_rag, wikidata_answers)
+        t5_scores_wikidata_rag = evaluate_all(t5_answer_rag, wikidata_answers)
 
-        scores_rag[query] = f"1st Model Scores: {t5_scores_rag}\n2nd Model Scores: {llama_scores_rag}"
+        scores_rag[query] = f"1st Model Scores: {t5_scores_wikidata_rag}\n2nd Model Scores: {llama_scores_wikidata_rag}"
 
         t5_rag_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices,
             "augmented_prompt": t5_augmented_prompt,
-            "generated_answer": t5_answer_rag
+            "generated_answer": t5_answer_rag,
+            "scores": t5_scores_wikidata_rag
         })
 
         llama_rag_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices,
             "augmented_prompt": llama_augmented_prompt,
-            "generated_answer": llama_answer_rag
+            "generated_answer": llama_answer_rag,
+            "scores": llama_scores_wikidata_rag
         })
 
         # Oracle pipeline
@@ -211,37 +236,27 @@ def main():
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
-        t5_scores_oracle = evaluate_all(t5_answer_oracle, short_answer)
-        llama_scores_oracle = evaluate_all(llama_answer_oracle, short_answer)
+        llama_scores_wikidata_oracle = evaluate_all(llama_answer_oracle, wikidata_answers)
+        t5_scores_wikidata_oracle = evaluate_all(t5_answer_oracle, wikidata_answers)
 
-        scores_oracle[query] = f"1st Model Scores: {t5_scores_oracle}\n2nd Model Scores: {llama_scores_oracle}"
+        scores_oracle[query] = f"1st Model Scores: {t5_scores_wikidata_oracle}\n2nd Model Scores: {llama_scores_wikidata_oracle}"
 
         t5_oracle_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices_oracle,
             "augmented_prompt": t5_oracle_augmented_prompt,
-            "generated_answer": t5_answer_oracle
+            "generated_answer": t5_answer_oracle,
+            "scores": t5_scores_wikidata_oracle
         })
 
         llama_oracle_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices_oracle,
             "augmented_prompt": llama_oracle_augmented_prompt,
-            "generated_answer": llama_answer_oracle
+            "generated_answer": llama_answer_oracle,
+            "scores": llama_scores_wikidata_oracle
         })
-
-        # Wikidata ground truth evaluation
-        wikidata_answers = get_wikidata_ground_truth(wikidata_id, short_answer)
         
-        llama_scores_wikidata_baseline = evaluate_all(wikidata_answers, short_answer)
-        t5_scores_wikidata_baseline = evaluate_all(wikidata_answers, short_answer)
-
-        llama_scores_wikidata_rag = evaluate_all(wikidata_answers, llama_answer_rag)
-        t5_scores_wikidata_rag = evaluate_all(wikidata_answers, t5_answer_rag)
-
-        llama_scores_wikidata_oracle = evaluate_all(wikidata_answers, llama_answer_oracle)
-        t5_scores_wikidata_oracle = evaluate_all(wikidata_answers, t5_answer_oracle)
-
     print("------------Final Answers (RAG):--------------")
     for query, answer in answers_rag.items():
         print(f"Query: {query}\n{answer}\n{scores_rag[query]}\n")
