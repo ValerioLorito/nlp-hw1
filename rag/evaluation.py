@@ -10,6 +10,7 @@ parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from src.data_loader import load_data
+from output_files import generate_jsonl_file, export_judge_to_excel
 
 def compute_exact_match(prediction, ground_truths):
     for ground_truth in ground_truths:
@@ -43,7 +44,7 @@ def judge_answers(evaluator, tokenizer, device, query, llm_answer, short_answer)
               "You must respond only with a valid JSON object containing two keys: 'reasoning' (a brief explanation) and 'score' (integer 1 or 0):\n"
               "- reasoning: a brief explanaton of why the LLM answer is correct or not based on the short answer.\n"
               "- score: 1 if the LLM answer is correct, 0 otherwise.\n"
-              f"Query: {query}\n"f"Query: {query}\n"
+              f"Query: {query}\n"
               f"LLM Answer: {llm_answer}\n"
               f"Short Answer: {short_answer}\n"
               "Evaluation:")
@@ -69,7 +70,7 @@ def judge_answers(evaluator, tokenizer, device, query, llm_answer, short_answer)
 
     return score
 
-def judge_model(model, queries):
+def judge_model(model, queries, ds):
     judge_model, judge_tokenizer, judge_device = load_model("mistralai/Mistral-7B-Instruct-v0.3", "causal")
 
     ANSWERS_DIR = os.path.join(parent_dir, "rag/answers")
@@ -80,16 +81,29 @@ def judge_model(model, queries):
     with open(model_answers, "r") as f:
         model_answers = [json.loads(line) for line in f]
 
-    for query_index, query in enumerate(queries[:200]): # Limit to the first 200 queries for testing
+    for query_index, query in enumerate(queries[:5]): # Limit to the first 200 queries for testing
         item = ds["test"][query_index]
         query = item["query"]
         query_id = item["query_id"]
         short_answer = item["short_answer"]
 
-        judgement = judge_answers(judge_model, judge_tokenizer, judge_device, query, model_answers[query_index]['generated_answer'], short_answer)
+        # Link the index with RAG results
+        rag_item = model_answers[query_index]
+
+        judgement = judge_answers(judge_model, judge_tokenizer, judge_device, query, rag_item['generated_answer'], short_answer)
         print(f"Query: {query}\n{model} Answer: {model_answers[query_index]['generated_answer']}\nShort Answer: {short_answer}\nJudgement: {judgement}\n")
 
-        judgements.append(judgement)
+        # results for JSONL generation
+        result_dict = {
+            "query_id": rag_item["query_id"],
+            "retrieved_chunks": rag_item.get("retrieved_chunks", []),
+            "augmented_prompt": rag_item.get("augmented_prompt", ""),
+            "generated_answer": rag_item["generated_answer"],
+            "llm_judge": judgement, 
+            "annotator_1": "",
+            "annotator_2": ""
+        }
+        judgements.append(result_dict)
 
     return judgements
 
@@ -135,8 +149,15 @@ def main():
     evaluate_generations("t5", query_ids, short_answers, "rag/answers/Its_always_loss-test-flan-t5-large-RAG.jsonl")
     evaluate_generations("llama", query_ids, short_answers, "rag/answers/Its_always_loss-test-Llama-3.2-1b-instruct-RAG.jsonl")
 
-    #judgements = judge_model("t5", queries)
-
+    judgements_t5 = judge_model("flan-t5-large", queries, ds)
+    judgements_llama = judge_model("Llama-3.2-1b-instruct", queries, ds)
+    
+    generate_jsonl_file(judgements_t5, "test", "flan-t5-large", "RAG-JUDGE", "LLM_judge")
+    jsonl_path = f"HW2/test/Its_always_loss-test-flan-t5-large-RAG-JUDGE.jsonl"
+    export_judge_to_excel(jsonl_path, f"HW2/test/Annotations-flan-t5-large.xlsx")
+    generate_jsonl_file(judgements_t5, "test", "Llama-3.2-1b-instruct", "RAG-JUDGE", "LLM_judge")
+    jsonl_path = f"HW2/test/Its_always_loss-test-Llama-3.2-1b-instruct-RAG-JUDGE.jsonl"
+    export_judge_to_excel(jsonl_path, f"HW2/test/Annotations-Llama-3.2-1b-instruct.xlsx")
 
 if __name__ == "__main__":
     main()

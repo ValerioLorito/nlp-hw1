@@ -45,13 +45,13 @@ def export_judge_to_excel(jsonl_filepath, excel_filepath):
             if line.strip():
                 record = json.loads(line)
                 row = {
-                    "Query ID": record.get("query_id", ""),
-                    "Chunks": str(record.get("retrieved_chunks", [])),
-                    "Augmented Prompt": record.get("augmented_prompt", ""),
-                    "Generated answer": record.get("generated_answer", ""),
-                    "LLM Judge Score": record.get("llm_judge", 0),
-                    "Annotator 1": "", 
-                    "Annotator 2": "" 
+                    "query_id": record.get("query_id", ""),
+                    "retrieved_chunks": str(record.get("retrieved_chunks", [])),
+                    "augmented_prompt": record.get("augmented_prompt", ""),
+                    "generated_answer": record.get("generated_answer", ""),
+                    "llm_judge": record.get("llm_judge", 0),
+                    "annotator_1": "", 
+                    "annotator_2": "" 
                 }
                 records.append(row)
                 
