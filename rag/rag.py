@@ -145,10 +145,10 @@ def main():
 
         answers_baseline[query] = f"1st Model Answer: {t5_answer}\n2nd Model Answer: {llama_answer}\nReal Answer: {short_answer}" # Store real answer
 
-        llama_scores_baseline = evaluate_all(llama_answer, wikidata_answers)
+        '''llama_scores_baseline = evaluate_all(llama_answer, wikidata_answers)
         t5_scores_baseline = evaluate_all(t5_answer, wikidata_answers)
 
-        scores_baseline[query] = f"1st Model Scores: {t5_scores_baseline}\n2nd Model Scores: {llama_scores_baseline}"
+        scores_baseline[query] = f"1st Model Scores: {t5_scores_baseline}\n2nd Model Scores: {llama_scores_baseline}"'''
 
         t5_baseline_all_results.append({
             "query_id": query_id,
@@ -196,9 +196,6 @@ def main():
 
         wikidata_info = get_wikidata_entity(wikidata_id)
 
-        # Wikidata ground truth evaluation
-        wikidata_answers = get_wikidata_ground_truth(wikidata_id, short_answer)
-
         # RAG pipeline
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
         
@@ -207,17 +204,16 @@ def main():
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
-        llama_scores_wikidata_rag = evaluate_all(llama_answer_rag, wikidata_answers)
+        '''llama_scores_wikidata_rag = evaluate_all(llama_answer_rag, wikidata_answers)
         t5_scores_wikidata_rag = evaluate_all(t5_answer_rag, wikidata_answers)
 
-        scores_rag[query] = f"1st Model Scores: {t5_scores_wikidata_rag}\n2nd Model Scores: {llama_scores_wikidata_rag}"
+        scores_rag[query] = f"1st Model Scores: {t5_scores_wikidata_rag}\n2nd Model Scores: {llama_scores_wikidata_rag}"'''
 
         t5_rag_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices,
             "augmented_prompt": t5_augmented_prompt,
             "generated_answer": t5_answer_rag,
-            "scores": t5_scores_wikidata_rag
         })
 
         llama_rag_all_results.append({
@@ -225,7 +221,6 @@ def main():
             "retrieved_chunks": retrieved_indices,
             "augmented_prompt": llama_augmented_prompt,
             "generated_answer": llama_answer_rag,
-            "scores": llama_scores_wikidata_rag
         })
 
         # Oracle pipeline
@@ -236,17 +231,16 @@ def main():
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
-        llama_scores_wikidata_oracle = evaluate_all(llama_answer_oracle, wikidata_answers)
+        '''llama_scores_wikidata_oracle = evaluate_all(llama_answer_oracle, wikidata_answers)
         t5_scores_wikidata_oracle = evaluate_all(t5_answer_oracle, wikidata_answers)
 
-        scores_oracle[query] = f"1st Model Scores: {t5_scores_wikidata_oracle}\n2nd Model Scores: {llama_scores_wikidata_oracle}"
+        scores_oracle[query] = f"1st Model Scores: {t5_scores_wikidata_oracle}\n2nd Model Scores: {llama_scores_wikidata_oracle}"'''
 
         t5_oracle_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices_oracle,
             "augmented_prompt": t5_oracle_augmented_prompt,
             "generated_answer": t5_answer_oracle,
-            "scores": t5_scores_wikidata_oracle
         })
 
         llama_oracle_all_results.append({
@@ -254,7 +248,6 @@ def main():
             "retrieved_chunks": retrieved_indices_oracle,
             "augmented_prompt": llama_oracle_augmented_prompt,
             "generated_answer": llama_answer_oracle,
-            "scores": llama_scores_wikidata_oracle
         })
         
     print("------------Final Answers (RAG):--------------")

@@ -5,11 +5,13 @@ from utils import load_model
 import os
 import re
 import sys
+from tqdm import tqdm
 
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(parent_dir)
 
 from src.data_loader import load_data
+from wikidata_utils import get_wikidata_ground_truth
 
 def compute_exact_match(prediction, ground_truths):
     for ground_truth in ground_truths:
@@ -93,13 +95,19 @@ def judge_model(model, queries):
 
     return judgements
 
-def evaluate_generations(model, query_ids, short_answers, file): 
+def evaluate_generations(model, query_ids, short_answers, wikidata_ids, file): 
+    wikidata_answers = []
+
+    for query_id, wikidata_id, short_answer in tqdm(zip(query_ids, wikidata_ids, short_answers), total=len(query_ids), desc="Fetching Wikidata Ground Truths"):
+        wikidata_answers.append(get_wikidata_ground_truth(wikidata_id, short_answer[0]))
+
     gold_answers = dict(zip(query_ids, short_answers))
 
     output_file = file.replace(".jsonl", "_scored.jsonl")
 
     results = []
     total_scores = []
+    total_wikidata_scores = []
 
     with open(file, "r") as f:
         for line in f:
@@ -111,9 +119,13 @@ def evaluate_generations(model, query_ids, short_answers, file):
 
             scores = evaluate_all(generated_answer, short_answer)
 
+            wikidata_scores = evaluate_all(generated_answer, wikidata_answers[query_ids.index(query_id)])
+
             total_scores.append(scores)
+            total_wikidata_scores.append(wikidata_scores)
 
             item["scores"] = scores
+            item["wikidata_scores"] = wikidata_scores
             results.append(item)
             
 
@@ -123,7 +135,10 @@ def evaluate_generations(model, query_ids, short_answers, file):
 
     for metric in ["EM", "subEM", "METEOR"]:
         avg_score = sum(score[metric] for score in total_scores) / len(total_scores)
+        avg_wikidata_score = sum(score[metric] for score in total_wikidata_scores) / len(total_wikidata_scores)
         print(f"Average {metric} for {model}: {avg_score:.4f}")
+        print(f"Average {metric} for {model} (using Wikidata answers as ground truth): {avg_wikidata_score:.4f}")
+
 
 
 def main():
@@ -131,9 +146,10 @@ def main():
     queries = ds["test"]["query"]
     query_ids = ds["test"]["query_id"]
     short_answers = ds["test"]["short_answer"]
+    wikidata_ids = ds["test"]["wikidata_id"]
 
-    evaluate_generations("t5", query_ids, short_answers, "rag/answers/Its_always_loss-test-flan-t5-large-RAG.jsonl")
-    evaluate_generations("llama", query_ids, short_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-RAG.jsonl")
+    evaluate_generations("t5", query_ids, short_answers, wikidata_ids, "rag/answers/Its_always_loss-test-flan-t5-large-RAG.jsonl")
+    evaluate_generations("llama", query_ids, short_answers, wikidata_ids, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-RAG.jsonl")
 
     #judgements = judge_model("t5", queries)
 

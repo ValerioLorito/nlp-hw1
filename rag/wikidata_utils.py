@@ -203,7 +203,7 @@ def get_wikidata_ground_truth(wikidata_id, short_answer):
             "ids": match,
             "format": "json",
             "languages": "en",
-            "props": "labels | alises"
+            "props": "labels | aliases"
         }
 
         response = requests.get(url, params=params, headers=headers)
