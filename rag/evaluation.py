@@ -152,7 +152,7 @@ def main():
     short_answers = ds["test"]["short_answer"]
     wikidata_ids = ds["test"]["wikidata_id"]
     
-    '''wikidata_answers = []
+    wikidata_answers = []
 
     for query_id, wikidata_id, short_answer in tqdm(zip(query_ids, wikidata_ids, short_answers), total=len(query_ids), desc="Fetching Wikidata Ground Truths"):
         wikidata_answers.append(get_wikidata_ground_truth(wikidata_id, short_answer[0]))
@@ -164,16 +164,16 @@ def main():
     evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-RAG.jsonl")
 
     evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-flan-t5-large-Oracle.jsonl")
-    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-Oracle.jsonl")'''
+    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-Oracle.jsonl")
 
     selected_queries = random.sample(list(zip(queries, query_ids, short_answers)), 250) # Select a random subset of 250 queries for judging
     queries, query_ids, short_answers = zip(*selected_queries)
 
-    '''judgements_t5 = judge_model("flan-t5-large", selected_queries)
-    generate_jsonl_file(judgements_t5, "evaluation", "flan-t5-large", "RAG-JUDGE", "LLM_judge")'''
+    judgements_t5 = judge_model("flan-t5-large", selected_queries)
+    generate_jsonl_file(judgements_t5, "evaluation", "flan-t5-large", "RAG-JUDGE", "LLM_judge")
     jsonl_path = f"rag/evaluation/Its_always_loss-evaluation-flan-t5-large-RAG-JUDGE.jsonl"
     export_judge_to_excel(jsonl_path, f"rag/evaluation/Annotations-flan-t5-large.xlsx", queries, short_answers)
- 
+
     '''judgements_llama = judge_model("Llama-3.2-1b-instruct", queries, ds)
     generate_jsonl_file(judgements_llama, "evaluation", "Llama-3.2-1b-instruct", "RAG-JUDGE", "LLM_judge")
     jsonl_path = f"rag/evaluation/Its_always_loss-evaluation-Llama-3.2-1b-instruct-RAG-JUDGE.jsonl"
