@@ -138,40 +138,32 @@ def main():
     # Baseline pipeline
     for query in tqdm(queries, desc="Baseline Pipeline Processing"): # Limit to the first 5 queries for testing
         item = ds["test"][queries.index(query)]
+        query = item["query"]
+        query_id = item["query_id"]
+        candidate = item["candidate_chunks"]
         short_answer = item["short_answer"]
 
-        t5_answer = baseline(t5_model, t5_tokenizer, query, t5_device)
-        llama_answer = baseline(llama_model, llama_tokenizer, query, llama_device)
+        t5_answer_baseline = baseline(t5_model, t5_tokenizer, query, t5_device)
+        llama_answer_baseline = baseline(llama_model, llama_tokenizer, query, llama_device)
 
-        answers_baseline[query] = f"1st Model Answer: {t5_answer}\n2nd Model Answer: {llama_answer}\nReal Answer: {short_answer}" # Store real answer
-
-        '''llama_scores_baseline = evaluate_all(llama_answer, wikidata_answers)
-        t5_scores_baseline = evaluate_all(t5_answer, wikidata_answers)
-
-        scores_baseline[query] = f"1st Model Scores: {t5_scores_baseline}\n2nd Model Scores: {llama_scores_baseline}"'''
+        answers_baseline[query] = f"1st Model Answer: {t5_answer_baseline}\n2nd Model Answer: {llama_answer_baseline}\nReal Answer: {short_answer}" # Store real answer
 
         t5_baseline_all_results.append({
             "query_id": query_id,
-            "retrieved_chunks": retrieved_indices,
-            "augmented_prompt": t5_augmented_prompt,
-            "generated_answer": t5_answer_rag,
-            "scores": t5_scores_baseline
+            "generated_answer": t5_answer_baseline,
         })
 
         llama_baseline_all_results.append({
             "query_id": query_id,
-            "retrieved_chunks": retrieved_indices,
-            "augmented_prompt": llama_augmented_prompt,
-            "generated_answer": llama_answer_rag,
-            "scores": llama_scores_baseline
+            "generated_answer": llama_answer_baseline,
         })
 
     print("------------Final Answers (Baseline):------------")
     for query, answer in answers_baseline.items():
-        print(f"Query: {query}\n{answer}\n{scores_baseline[query]}\n")
+        print(f"Query: {query}\n{answer}\n")
 
-    generate_jsonl_file(t5_baseline_all_results, "all-test", "flan-t5-large", "Baseline", "generated_responses")
-    generate_jsonl_file(llama_baseline_all_results, "all-test", "Llama-3.2-1b-instruct", "Baseline", "generated_responses")
+    generate_jsonl_file(t5_baseline_all_results, "answers", "flan-t5-large", "Baseline", "generated_responses")
+    generate_jsonl_file(llama_baseline_all_results, "answers", "Llama-3.2-1b-instruct", "Baseline", "generated_responses")
 
     # RAG and Oracle pipeline
     PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
@@ -204,11 +196,6 @@ def main():
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
-        '''llama_scores_wikidata_rag = evaluate_all(llama_answer_rag, wikidata_answers)
-        t5_scores_wikidata_rag = evaluate_all(t5_answer_rag, wikidata_answers)
-
-        scores_rag[query] = f"1st Model Scores: {t5_scores_wikidata_rag}\n2nd Model Scores: {llama_scores_wikidata_rag}"'''
-
         t5_rag_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices,
@@ -231,11 +218,6 @@ def main():
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
-        '''llama_scores_wikidata_oracle = evaluate_all(llama_answer_oracle, wikidata_answers)
-        t5_scores_wikidata_oracle = evaluate_all(t5_answer_oracle, wikidata_answers)
-
-        scores_oracle[query] = f"1st Model Scores: {t5_scores_wikidata_oracle}\n2nd Model Scores: {llama_scores_wikidata_oracle}"'''
-
         t5_oracle_all_results.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices_oracle,
@@ -258,10 +240,10 @@ def main():
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
 
-    generate_jsonl_file(t5_rag_all_results, "all-test", "flan-t5-large", "RAG", "generated_responses")
-    generate_jsonl_file(llama_rag_all_results, "all-test", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
-    generate_jsonl_file(t5_oracle_all_results, "all-test", "flan-t5-large", "Oracle", "generated_responses")
-    generate_jsonl_file(llama_oracle_all_results, "all-test", "Llama-3.2-1b-instruct", "Oracle", "generated_responses")
+    generate_jsonl_file(t5_rag_all_results, "answers", "flan-t5-large", "RAG", "generated_responses")
+    generate_jsonl_file(llama_rag_all_results, "answers", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
+    generate_jsonl_file(t5_oracle_all_results, "answers", "flan-t5-large", "Oracle", "generated_responses")
+    generate_jsonl_file(llama_oracle_all_results, "answers", "Llama-3.2-1b-instruct", "Oracle", "generated_responses")
     
 if __name__ == "__main__":
     main()

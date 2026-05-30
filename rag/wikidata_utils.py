@@ -1,4 +1,12 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
+session = requests.Session()
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[502, 503, 504])
+adapter = HTTPAdapter(max_retries=retries)
+session.mount("http://", adapter)
+session.mount("https://", adapter)
 
 # Gold properties: properties that are more likely to be meaningful in a QA task for a given entity (manually selected from top-100 used properties in Wikidata). 
 WIKIDATA_GOLD_PROPERTIES = {
@@ -47,7 +55,7 @@ def get_wikidata_entity(wikidata_ids, id_only=False):
         "User-Agent": "NLPHomework Bot (lorito.1885657@studenti.uniroma1.it)" 
     }
 
-    response = requests.get(url, params=params, headers=headers)
+    response = session.get(url, params=params, headers=headers)
     response.raise_for_status()
 
     data = response.json()
@@ -137,7 +145,7 @@ def fetch_property(claims, selected_properties, ids_to_fetch, needs_gold=False):
                 # Avoids fetching properties with datatypes that are not properly meaningful in textual context (e.g., media, URLs, geo-shapes, etc.).
                 if datatype in ["commonsMedia", "external-id", "url", "math", "geo-shape", "tabular-data", "musical-notation"]:
                     continue
-
+                    
                 prop_name = WIKIDATA_GOLD_PROPERTIES.get(prop_id, prop_id) # If it's a gold property, we use its name, otherwise we keep the id as name.
                 if prop_id not in WIKIDATA_GOLD_PROPERTIES:
                     ids_to_fetch.add(prop_id)
@@ -182,7 +190,7 @@ def get_wikidata_ground_truth(wikidata_id, short_answer):
         "props": "claims"
     }
 
-    response = requests.get(url, params=params, headers=headers)
+    response = session.get(url, params=params, headers=headers)
     response.raise_for_status()
     data = response.json()
     entity = data.get("entities", {}).get(wikidata_id, {})
@@ -203,10 +211,10 @@ def get_wikidata_ground_truth(wikidata_id, short_answer):
             "ids": match,
             "format": "json",
             "languages": "en",
-            "props": "labels | aliases"
+            "props": "labels|aliases"
         }
 
-        response = requests.get(url, params=params, headers=headers)
+        response = session.get(url, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
         entity = data.get("entities", {}).get(match, {})

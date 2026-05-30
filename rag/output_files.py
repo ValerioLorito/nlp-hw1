@@ -8,8 +8,8 @@ def create_jsonl_file(results, filepath, type):
             if type == "generated_responses":
                 json_record = {
                     "query_id": result["query_id"],
-                    "retrieved_chunks": result["retrieved_chunks"],
-                    "augmented_prompt": result["augmented_prompt"],
+                    "augmented_prompt": result["augmented_prompt"] if result.get("augmented_prompt") is not None else "",
+                    "retrieved_chunks": result["retrieved_chunks"] if result.get("retrieved_chunks") is not None else [],
                     "generated_answer": result["generated_answer"]
                 }
             elif type == "LLM_judge":
@@ -28,7 +28,7 @@ def create_jsonl_file(results, filepath, type):
 def generate_jsonl_file(results, split_name, model_name, setting, type):
     group_name = "Its_always_loss"
 
-    output_dir = os.path.join("HW2", split_name)
+    output_dir = os.path.join("rag", split_name)
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
         
@@ -37,18 +37,20 @@ def generate_jsonl_file(results, split_name, model_name, setting, type):
     print(f"{filename} generation...")
     create_jsonl_file(results, filepath, type)
 
-def export_judge_to_excel(jsonl_filepath, excel_filepath):
+def export_judge_to_excel(jsonl_filepath, excel_filepath, queries, short_answers):
     records = []
     
     with open(jsonl_filepath, 'r', encoding='utf-8') as f:
-        for line in f:
+        for line, query, short_answer in zip(f, queries, short_answers):
             if line.strip():
                 record = json.loads(line)
                 row = {
                     "query_id": record.get("query_id", ""),
+                    "query": query,
                     "retrieved_chunks": str(record.get("retrieved_chunks", [])),
                     "augmented_prompt": record.get("augmented_prompt", ""),
                     "generated_answer": record.get("generated_answer", ""),
+                    "short_answer": short_answer,
                     "llm_judge": record.get("llm_judge", 0),
                     "annotator_1": "", 
                     "annotator_2": "" 

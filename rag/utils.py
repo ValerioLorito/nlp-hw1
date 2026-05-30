@@ -1,3 +1,5 @@
+import numpy as np
+import random
 import torch
 from transformers import AutoModelForCausalLM, AutoModelForSeq2SeqLM, AutoTokenizer, BitsAndBytesConfig
 
@@ -27,3 +29,10 @@ def load_model(model, model_type):
         model.to(device)
     
     return model, tokenizer, device
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
