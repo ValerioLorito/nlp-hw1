@@ -50,7 +50,7 @@ def export_judge_to_excel(jsonl_filepath, excel_filepath, queries, short_answers
                     "retrieved_chunks": str(record.get("retrieved_chunks", [])),
                     "augmented_prompt": record.get("augmented_prompt", ""),
                     "generated_answer": record.get("generated_answer", ""),
-                    "short_answer": short_answer,
+                    "short_answer": short_answer[0],
                     "llm_judge": record.get("llm_judge", 0),
                     "annotator_1": "", 
                     "annotator_2": "" 
