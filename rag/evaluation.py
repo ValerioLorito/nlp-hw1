@@ -104,7 +104,7 @@ def judge_model(model, queries):
 
     return judgements
 
-def evaluate_generations(model, query_ids, short_answers, wikidata_answers, file): 
+def evaluate_generations(model, query_ids, short_answers, wikidata_answers, system, file): 
     gold_answers = dict(zip(query_ids, short_answers))
 
     output_file = file.replace(".jsonl", "_scored.jsonl")
@@ -140,8 +140,27 @@ def evaluate_generations(model, query_ids, short_answers, wikidata_answers, file
     for metric in ["EM", "subEM", "METEOR"]:
         avg_score = sum(score[metric] for score in total_scores) / len(total_scores)
         avg_wikidata_score = sum(score[metric] for score in total_wikidata_scores) / len(total_wikidata_scores)
-        print(f"Average {metric} for {model}: {avg_score:.4f}")
-        print(f"Average {metric} for {model} (using Wikidata answers as ground truth): {avg_wikidata_score:.4f}")
+        print(f"Average {metric} for {model} on {system}: {avg_score:.4f}")
+        print(f"Average {metric} for {model} on {system} (using Wikidata answers as ground truth): {avg_wikidata_score:.4f}")
+
+def final_evaluation(file):
+    overall_scores = []
+    overall_judge_scores = []
+
+    with open(file, "r") as f:
+        for line in f:
+            item = json.loads(line)
+            scores = item.get("annotator_1")
+            judge_score = item.get("llm_judge")
+            overall_scores.append(scores)
+            overall_judge_scores.append(judge_score)
+    
+    avg_score = sum(overall_scores) / len(overall_scores)
+    avg_judge_score = sum(overall_judge_scores) / len(overall_judge_scores)
+
+    print(f"Average score for annotators: {avg_score:.4f}")
+    print(f"Average score for LLM judge: {avg_judge_score:.4f}")
+    print(f"Correlation between annotators and LLM judge: {np.corrcoef(overall_scores, overall_judge_scores)[0, 1]:.4f}")
 
 def main():
     set_seed()
@@ -157,16 +176,16 @@ def main():
     for query_id, wikidata_id, short_answer in tqdm(zip(query_ids, wikidata_ids, short_answers), total=len(query_ids), desc="Fetching Wikidata Ground Truths"):
         wikidata_answers.append(get_wikidata_ground_truth(wikidata_id, short_answer[0]))
 
-    evaluate_generations("flan-t5-large", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-flan-t5-large-Baseline.jsonl")
-    evaluate_generations("Llama-3.2-1b-instruct", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-Baseline.jsonl")
+    evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "Baseline", "rag/answers/Its_always_loss-test-flan-t5-large-Baseline.jsonl")
+    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "Baseline", "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-Baseline.jsonl")
 
-    evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-flan-t5-large-RAG.jsonl")
-    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-RAG.jsonl")
+    evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "RAG", "rag/answers/Its_always_loss-test-flan-t5-large-RAG.jsonl")
+    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "RAG", "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-RAG.jsonl")
 
-    evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-flan-t5-large-Oracle.jsonl")
-    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-Oracle.jsonl")
+    evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "Oracle", "rag/answers/Its_always_loss-test-flan-t5-large-Oracle.jsonl")
+    evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "Oracle", "rag/answers/Its_always_loss-test-llama-3.2-1b-instruct-Oracle.jsonl")
 
-    selected_queries = random.sample(list(zip(queries, query_ids, short_answers)), 250) # Select a random subset of 250 queries for judging
+    '''selected_queries = random.sample(list(zip(queries, query_ids, short_answers)), 250) # Select a random subset of 250 queries for judging
     queries, query_ids, short_answers = zip(*selected_queries)
 
     judgements_t5 = judge_model("flan-t5-large", selected_queries)
@@ -174,7 +193,7 @@ def main():
     jsonl_path = f"rag/evaluation/Its_always_loss-evaluation-flan-t5-large-RAG-JUDGE.jsonl"
     export_judge_to_excel(jsonl_path, f"rag/evaluation/Annotations-flan-t5-large.xlsx", queries, short_answers)
 
-    '''judgements_llama = judge_model("Llama-3.2-1b-instruct", queries, ds)
+    judgements_llama = judge_model("Llama-3.2-1b-instruct", queries, ds)
     generate_jsonl_file(judgements_llama, "evaluation", "Llama-3.2-1b-instruct", "RAG-JUDGE", "LLM_judge")
     jsonl_path = f"rag/evaluation/Its_always_loss-evaluation-Llama-3.2-1b-instruct-RAG-JUDGE.jsonl"
     export_judge_to_excel(jsonl_path, f"rag/evaluation/Annotations-Llama-3.2-1b-instruct.xlsx", queries)'''

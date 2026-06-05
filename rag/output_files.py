@@ -62,3 +62,25 @@ def export_judge_to_excel(jsonl_filepath, excel_filepath, queries, short_answers
     df.to_excel(excel_filepath, sheet_name="Jugements", index=False)
     
     print(f"excel file saved : {excel_filepath}")
+
+def export_annotations(excel_filepath, jsonl_filepath):
+    df = pd.read_excel(excel_filepath, sheet_name="Jugements")
+    
+    records = []
+    for _, row in df.iterrows():
+        record = {
+            "query_id": row.get("query_id", ""),
+            "retrieved_chunks": row.get("retrieved_chunks", ""),
+            "augmented_prompt": row.get("augmented_prompt", ""),
+            "generated_answer": row.get("generated_answer", ""),
+            "llm_judge": row.get("llm_judge", 0),
+            "annotator_1": row.get("annotator_1", ""),
+            "annotator_2": row.get("annotator_2", "")
+        }
+        records.append(record)
+    
+    with open(jsonl_filepath, 'w', encoding='utf-8') as f:
+        for record in records:
+            f.write(json.dumps(record, ensure_ascii=False) + '\n')
+    
+    print(f"jsonl file saved : {jsonl_filepath}")

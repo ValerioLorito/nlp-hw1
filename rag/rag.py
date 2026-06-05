@@ -163,7 +163,7 @@ def main():
         print(f"Query: {query}\n{answer}\n")
 
     generate_jsonl_file(t5_baseline_all_results, "answers", "flan-t5-large", "Baseline", "generated_responses")
-    generate_jsonl_file(llama_baseline_all_results, "answers", "Llama-3.2-1b-instruct", "Baseline", "generated_responses")
+    generate_jsonl_file(llama_baseline_all_results, "answers", "llama-3.2-1b-instruct", "Baseline", "generated_responses")
 
     # RAG and Oracle pipeline
     PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
@@ -241,9 +241,9 @@ def main():
         print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
 
     generate_jsonl_file(t5_rag_all_results, "answers", "flan-t5-large", "RAG", "generated_responses")
-    generate_jsonl_file(llama_rag_all_results, "answers", "Llama-3.2-1b-instruct", "RAG", "generated_responses")
+    generate_jsonl_file(llama_rag_all_results, "answers", "llama-3.2-1b-instruct", "RAG", "generated_responses")
     generate_jsonl_file(t5_oracle_all_results, "answers", "flan-t5-large", "Oracle", "generated_responses")
-    generate_jsonl_file(llama_oracle_all_results, "answers", "Llama-3.2-1b-instruct", "Oracle", "generated_responses")
+    generate_jsonl_file(llama_oracle_all_results, "answers", "llama-3.2-1b-instruct", "Oracle", "generated_responses")
     
 if __name__ == "__main__":
     main()
