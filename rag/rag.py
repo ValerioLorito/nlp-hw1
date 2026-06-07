@@ -118,6 +118,49 @@ def oracle(retrieved_chunks, retrieved_indices, gold_index, candidates):
     
     return chunks_list, indices_list
 
+def blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl):
+    queries = ds["blind"]["query"]
+    answers_rag_blind = {}
+    t5_rag_all_results_blind = []
+    llama_rag_all_results_blind = []
+    for query in tqdm(queries, desc="RAG Pipeline Procesing on blind set"):
+        item = ds["blind"][queries.index(query)]
+        query = item["query"]
+        query_id = item["query_id"]
+        candidate = item["candidate_chunks"]
+        wikidata_id = item["wikidata_id"]
+
+        wikidata_info = get_wikidata_entity(wikidata_id)
+
+        # Blind set
+        retrieved_chunks_blind, retrieved_indices_blind = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
+        
+        t5_answer_rag_blind, t5_augmented_prompt_blind = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_blind, t5_device)
+        llama_answer_rag_blind, llama_augmented_prompt_blind = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks_blind, llama_device)
+
+        answers_rag_blind[query] = f"1st Model RAG Answer: {t5_answer_rag_blind}\n2nd Model RAG Answer: {llama_answer_rag_blind}\n"
+
+        t5_rag_all_results_blind.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices_blind,
+            "augmented_prompt": t5_augmented_prompt_blind,
+            "generated_answer": t5_answer_rag_blind,
+        })
+
+        llama_rag_all_results_blind.append({
+            "query_id": query_id,
+            "retrieved_chunks": retrieved_indices_blind,
+            "augmented_prompt": llama_augmented_prompt_blind,
+            "generated_answer": llama_answer_rag_blind,
+        })
+
+    print("------------Final Answers (RAG):--------------")
+    for query, answer in answers_rag_blind.items():
+        print(f"Query: {query}\n{answer}\n")
+        
+    generate_jsonl_file(t5_rag_all_results_blind, "blind", "flan-t5-large", "RAG", "generated_responses")
+    generate_jsonl_file(llama_rag_all_results_blind, "blind", "llama-3.2-1b-instruct", "RAG", "generated_responses")
+
 def main():
     ds = load_data()
 
@@ -128,7 +171,7 @@ def main():
    
     llama_model = "meta-llama/Llama-3.2-1b-instruct"  # You can change this to any other model you want to test
     llama_model, llama_tokenizer, llama_device = load_model(llama_model, "causal") # LLaMA is a causal model, so we specify "causal" here
-
+    '''
     answers_baseline = {}
     scores_baseline = {}
 
@@ -244,6 +287,10 @@ def main():
     generate_jsonl_file(llama_rag_all_results, "answers", "llama-3.2-1b-instruct", "RAG", "generated_responses")
     generate_jsonl_file(t5_oracle_all_results, "answers", "flan-t5-large", "Oracle", "generated_responses")
     generate_jsonl_file(llama_oracle_all_results, "answers", "llama-3.2-1b-instruct", "Oracle", "generated_responses")
-    
+    '''
+    PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
+    all_mini_jsonl_blind = os.path.join(PREDICTIONS_DIR, "blind", "Its_always_loss-blind-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
+    blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl_blind)
+
 if __name__ == "__main__":
     main()

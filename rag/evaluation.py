@@ -5,6 +5,7 @@ import os
 import random
 import re
 import sys
+import numpy as np
 from tqdm import tqdm
 from utils import load_model, set_seed
 
