@@ -43,9 +43,9 @@ def evaluate_all(prediction, ground_truth): # prediction is a string and ground_
     }
 
 def judge_answers(evaluator, tokenizer, device, query, llm_answer, short_answer):
-    prompt = ("You are an expert evaluator. Assess if the LLM Answer is correct based on the Short Answer (a Short Answer is a set of concise and correct answers)."
+    prompt = ("You are an expert evaluator. Assess if\te the LLM Answer is correct based on the Short Answer (a Short Answer is a set of concise and correct answers)."
               "You must respond only with a valid JSON object containing two keys: 'reasoning' (a brief explanation) and 'score' (integer 1 or 0):\n"
-              "- reasoning: a brief explanaton of why the LLM answer is correct or not based on the short answer.\n"
+              "- reasoning: a brief explanation of why the LLM answer is correct or not based on the short answer.\n"
               "- score: 1 if the LLM answer is correct, 0 otherwise.\n"
               f"Query: {query}\n"
               f"LLM Answer: {llm_answer}\n"
