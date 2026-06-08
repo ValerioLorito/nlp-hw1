@@ -135,17 +135,17 @@ def blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model
         # Blind set
         retrieved_chunks_blind, retrieved_indices_blind = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
         
-        t5_answer_rag_blind, t5_augmented_prompt_blind = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_blind, t5_device)
+        # t5_answer_rag_blind, t5_augmented_prompt_blind = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_blind, t5_device)
         llama_answer_rag_blind, llama_augmented_prompt_blind = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks_blind, llama_device)
 
-        answers_rag_blind[query] = f"1st Model RAG Answer: {t5_answer_rag_blind}\n2nd Model RAG Answer: {llama_answer_rag_blind}\n"
+        # answers_rag_blind[query] = f"1st Model RAG Answer: {t5_answer_rag_blind}\n2nd Model RAG Answer: {llama_answer_rag_blind}\n"
 
-        t5_rag_all_results_blind.append({
+        ''' t5_rag_all_results_blind.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices_blind,
             "augmented_prompt": t5_augmented_prompt_blind,
             "generated_answer": t5_answer_rag_blind,
-        })
+        })'''
 
         llama_rag_all_results_blind.append({
             "query_id": query_id,
@@ -154,11 +154,11 @@ def blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model
             "generated_answer": llama_answer_rag_blind,
         })
 
-    print("------------Final Answers (RAG):--------------")
+    ''' print("------------Final Answers (RAG):--------------")
     for query, answer in answers_rag_blind.items():
-        print(f"Query: {query}\n{answer}\n")
+        print(f"Query: {query}\n{answer}\n") '''
         
-    generate_jsonl_file(t5_rag_all_results_blind, "blind", "flan-t5-large", "RAG", "generated_responses")
+    # generate_jsonl_file(t5_rag_all_results_blind, "blind", "flan-t5-large", "RAG", "generated_responses")
     generate_jsonl_file(llama_rag_all_results_blind, "blind", "llama-3.2-1b-instruct", "RAG", "generated_responses")
 
 def main():
