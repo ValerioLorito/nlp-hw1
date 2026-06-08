@@ -171,7 +171,7 @@ def main():
    
     llama_model = "meta-llama/Llama-3.2-1b-instruct"  # You can change this to any other model you want to test
     llama_model, llama_tokenizer, llama_device = load_model(llama_model, "causal") # LLaMA is a causal model, so we specify "causal" here
-    '''
+    
     answers_baseline = {}
     scores_baseline = {}
 
@@ -287,7 +287,7 @@ def main():
     generate_jsonl_file(llama_rag_all_results, "answers", "llama-3.2-1b-instruct", "RAG", "generated_responses")
     generate_jsonl_file(t5_oracle_all_results, "answers", "flan-t5-large", "Oracle", "generated_responses")
     generate_jsonl_file(llama_oracle_all_results, "answers", "llama-3.2-1b-instruct", "Oracle", "generated_responses")
-    '''
+    
     PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
     all_mini_jsonl_blind = os.path.join(PREDICTIONS_DIR, "blind", "Its_always_loss-blind-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
     blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl_blind)
