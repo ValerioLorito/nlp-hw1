@@ -185,12 +185,13 @@ def main():
 
     evaluate_generations("t5", query_ids, short_answers, wikidata_answers, "Oracle", "rag/all-test/Its_always_loss-all-test-flan-t5-large-Oracle.jsonl")
     evaluate_generations("llama", query_ids, short_answers, wikidata_answers, "Oracle", "rag/all-test/Its_always_loss-all-test-llama-3.2-1b-instruct-Oracle.jsonl")
-
+''' 
     selected_queries = random.sample(list(zip(queries, query_ids, short_answers)), 250) # Select a random subset of 250 queries for judging
     queries, query_ids, short_answers = zip(*selected_queries)
 
-    judgements_t5 = judge_model("flan-t5-large", selected_queries)
-    generate_jsonl_file(judgements_t5, "rag/judge-subset", "flan-t5-large", "RAG-JUDGE", "LLM_judge")'''
+    '''judgements_t5 = judge_model("flan-t5-large", selected_queries)
+    generate_jsonl_file(judgements_t5, "rag/judge-subset", "flan-t5-large", "RAG-JUDGE", "LLM_judge")
+    '''
     jsonl_path = f"rag/judge-subset/Its_always_loss-judge-subset-flan-t5-large-RAG-JUDGE.jsonl" 
     export_judge_to_excel(jsonl_path, f"rag/judge-subset/Annotations-flan-t5-large.xlsx", queries, short_answers)
 
