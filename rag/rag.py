@@ -268,7 +268,7 @@ def main():
     for query, answer in answers_rag.items():
         print(f"Query: {query}\n{answer}\n")
 
-    for query in tqdm(queries[:5], desc="Oracle Pipeline Processing"):
+    for query in tqdm(queries, desc="Oracle Pipeline Processing"):
         item = ds["test"][queries.index(query)]
         query = item["query"]
         query_id = item["query_id"]
