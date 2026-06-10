@@ -306,9 +306,9 @@ def main():
     for query, answer in answers_oracle.items():
         print(f"Query: {query}\n{answer}\n")
 
-    ''' PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
+    PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
     all_mini_jsonl_blind = os.path.join(PREDICTIONS_DIR, "blind", "Its_always_loss-blind-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
-    blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl_blind) '''
+    blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl_blind)
 
 if __name__ == "__main__":
     main()
