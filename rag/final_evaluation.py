@@ -33,8 +33,8 @@ def final_evaluation(file):
 
 
 def main():
-    export_annotations("rag/evaluation/Annotations-flan-t5-large.xlsx", "rag/evaluation/Its_always_loss-evaluation-flan-t5-large-RAG-JUDGE.jsonl")
-    final_evaluation("rag/evaluation/Its_always_loss-evaluation-flan-t5-large-RAG-JUDGE.jsonl")
+    export_annotations("rag/judge-subset/Annotations-flan-t5-large.xlsx", "rag/judge-subset/Its_always_loss-judge-subset-flan-t5-large-RAG-JUDGE.jsonl")
+    final_evaluation("rag/judge-subset/Its_always_loss-judge-subset-flan-t5-large-RAG-JUDGE.jsonl")
 
 if __name__ == "__main__":
     main()
