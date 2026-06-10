@@ -54,7 +54,7 @@ def get_top_k_chunks(query_id, jsonl_path, candidate_chunks, k=3):
     return top_k_chunks, top_k_indices
 
 
-def rag(model, tokenizer, query, wikidata_info, retrieved_passages, device, verbose=False):
+def rag(model, tokenizer, query, retrieved_passages, device, wikidata_info=None, verbose=False):
     context = []
     for index, passage in enumerate(retrieved_passages):
         formatted_passage = f"Document {index+1}: {passage}"
@@ -135,17 +135,17 @@ def blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model
         # Blind set
         retrieved_chunks_blind, retrieved_indices_blind = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
         
-        # t5_answer_rag_blind, t5_augmented_prompt_blind = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_blind, t5_device)
+        t5_answer_rag_blind, t5_augmented_prompt_blind = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_blind, t5_device)
         llama_answer_rag_blind, llama_augmented_prompt_blind = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks_blind, llama_device)
 
-        # answers_rag_blind[query] = f"1st Model RAG Answer: {t5_answer_rag_blind}\n2nd Model RAG Answer: {llama_answer_rag_blind}\n"
+        answers_rag_blind[query] = f"1st Model RAG Answer: {t5_answer_rag_blind}\n2nd Model RAG Answer: {llama_answer_rag_blind}\n"
 
-        ''' t5_rag_all_results_blind.append({
+        t5_rag_all_results_blind.append({
             "query_id": query_id,
             "retrieved_chunks": retrieved_indices_blind,
             "augmented_prompt": t5_augmented_prompt_blind,
             "generated_answer": t5_answer_rag_blind,
-        })'''
+        })
 
         llama_rag_all_results_blind.append({
             "query_id": query_id,
@@ -154,11 +154,11 @@ def blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model
             "generated_answer": llama_answer_rag_blind,
         })
 
-    ''' print("------------Final Answers (RAG):--------------")
+    print("------------Final Answers (RAG):--------------")
     for query, answer in answers_rag_blind.items():
-        print(f"Query: {query}\n{answer}\n") '''
+        print(f"Query: {query}\n{answer}\n")
         
-    # generate_jsonl_file(t5_rag_all_results_blind, "blind", "flan-t5-large", "RAG", "generated_responses")
+    generate_jsonl_file(t5_rag_all_results_blind, "blind", "flan-t5-large", "RAG", "generated_responses")
     generate_jsonl_file(llama_rag_all_results_blind, "blind", "llama-3.2-1b-instruct", "RAG", "generated_responses")
 
 def main():
@@ -171,7 +171,7 @@ def main():
    
     llama_model = "meta-llama/Llama-3.2-1b-instruct"  # You can change this to any other model you want to test
     llama_model, llama_tokenizer, llama_device = load_model(llama_model, "causal") # LLaMA is a causal model, so we specify "causal" here
-    '''
+    
     answers_baseline = {}
     scores_baseline = {}
 
@@ -205,10 +205,9 @@ def main():
     for query, answer in answers_baseline.items():
         print(f"Query: {query}\n{answer}\n")
 
-    generate_jsonl_file(t5_baseline_all_results, "answers", "flan-t5-large", "Baseline", "generated_responses")
-    generate_jsonl_file(llama_baseline_all_results, "answers", "llama-3.2-1b-instruct", "Baseline", "generated_responses")
+    generate_jsonl_file(t5_baseline_all_results, "all-test", "flan-t5-large", "Baseline", "generated_responses")
+    generate_jsonl_file(llama_baseline_all_results, "all-test", "llama-3.2-1b-instruct", "Baseline", "generated_responses")
 
-    # RAG and Oracle pipeline
     PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
     all_mini_jsonl = os.path.join(PREDICTIONS_DIR, "test", "Its_always_loss-test-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
     answers_rag = {}
@@ -220,7 +219,16 @@ def main():
     t5_oracle_all_results = []
     llama_oracle_all_results = []
 
-    for query in tqdm(queries, desc="RAG & Oracle Pipeline Procesing"): # Limit to the first 5 queries for testing
+    CACHE_FILE = os.path.join(parent_dir, "rag/all-test", "wikidata_cache.json")
+    wikidata_cache = {}
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r", encoding="utf-8") as f:
+            wikidata_cache = json.load(f)
+        print("Wikidata cache caricata con successo!")
+    else:
+        print("ATTENZIONE: File wikidata_cache.json non trovato! Assicurati di aver lanciato build_wikidata_cache.py")
+
+    for query in tqdm(queries, desc="RAG Pipeline Processing"): 
         item = ds["test"][queries.index(query)]
         query = item["query"]
         query_id = item["query_id"]
@@ -229,13 +237,13 @@ def main():
         short_answer = item["short_answer"]
         wikidata_id = item["wikidata_id"]
 
-        wikidata_info = get_wikidata_entity(wikidata_id)
+        wikidata_info = wikidata_cache.get(wikidata_id, "No information available")
 
-        # RAG pipeline
+        # --- RAG pipeline ---
         retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
-        
-        t5_answer_rag, t5_augmented_prompt = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks, t5_device)
-        llama_answer_rag, llama_augmented_prompt = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks, llama_device)
+
+        t5_answer_rag, t5_augmented_prompt = rag(t5_model, t5_tokenizer, query, retrieved_chunks, t5_device, wikidata_info=wikidata_info)
+        llama_answer_rag, llama_augmented_prompt = rag(llama_model, llama_tokenizer, query, retrieved_chunks, llama_device, wikidata_info=wikidata_info)
 
         answers_rag[query] = f"1st Model RAG Answer: {t5_answer_rag}\n2nd Model RAG Answer: {llama_answer_rag}\nReal Answer: {short_answer}"
 
@@ -251,13 +259,29 @@ def main():
             "retrieved_chunks": retrieved_indices,
             "augmented_prompt": llama_augmented_prompt,
             "generated_answer": llama_answer_rag,
-        })
+        }) 
 
-        # Oracle pipeline
+    generate_jsonl_file(t5_rag_all_results, "all-test", "flan-t5-large", "RAG", "generated_responses")
+    generate_jsonl_file(llama_rag_all_results, "all-test", "llama-3.2-1b-instruct", "RAG", "generated_responses")
+
+    print("------------Final Answers (RAG):--------------")
+    for query, answer in answers_rag.items():
+        print(f"Query: {query}\n{answer}\n")
+
+    for query in tqdm(queries[:5], desc="Oracle Pipeline Processing"):
+        item = ds["test"][queries.index(query)]
+        query = item["query"]
+        query_id = item["query_id"]
+        candidate = item["candidate_chunks"]
+        gold_index = item["answer_pos"]
+        short_answer = item["short_answer"]
+
+        retrieved_chunks, retrieved_indices = get_top_k_chunks(query_id, all_mini_jsonl, candidate, k=3)
+
         retrieved_chunks_oracle, retrieved_indices_oracle = oracle(retrieved_chunks, retrieved_indices, gold_index, candidate)
         
-        t5_answer_oracle, t5_oracle_augmented_prompt = rag(t5_model, t5_tokenizer, query, wikidata_info, retrieved_chunks_oracle, t5_device)
-        llama_answer_oracle, llama_oracle_augmented_prompt = rag(llama_model, llama_tokenizer, query, wikidata_info, retrieved_chunks_oracle, llama_device)
+        t5_answer_oracle, t5_oracle_augmented_prompt = rag(t5_model, t5_tokenizer, query, retrieved_chunks_oracle, t5_device)
+        llama_answer_oracle, llama_oracle_augmented_prompt = rag(llama_model, llama_tokenizer, query, retrieved_chunks_oracle, llama_device)
 
         answers_oracle[query] = f"1st Model Oracle Answer: {t5_answer_oracle}\n2nd Model Oracle Answer: {llama_answer_oracle}\nReal Answer: {short_answer}"
         
@@ -274,23 +298,17 @@ def main():
             "augmented_prompt": llama_oracle_augmented_prompt,
             "generated_answer": llama_answer_oracle,
         })
-        
-    print("------------Final Answers (RAG):--------------")
-    for query, answer in answers_rag.items():
-        print(f"Query: {query}\n{answer}\n{scores_rag[query]}\n")
+    
+    generate_jsonl_file(t5_oracle_all_results, "all-test", "flan-t5-large", "Oracle", "generated_responses")
+    generate_jsonl_file(llama_oracle_all_results, "all-test", "llama-3.2-1b-instruct", "Oracle", "generated_responses")
         
     print("------------Final Answers (Oracle):---------------")
     for query, answer in answers_oracle.items():
-        print(f"Query: {query}\n{answer}\n{scores_oracle[query]}\n")
+        print(f"Query: {query}\n{answer}\n")
 
-    generate_jsonl_file(t5_rag_all_results, "answers", "flan-t5-large", "RAG", "generated_responses")
-    generate_jsonl_file(llama_rag_all_results, "answers", "llama-3.2-1b-instruct", "RAG", "generated_responses")
-    generate_jsonl_file(t5_oracle_all_results, "answers", "flan-t5-large", "Oracle", "generated_responses")
-    generate_jsonl_file(llama_oracle_all_results, "answers", "llama-3.2-1b-instruct", "Oracle", "generated_responses")
-    '''
-    PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
+    ''' PREDICTIONS_DIR = os.path.join(parent_dir, "predictions")
     all_mini_jsonl_blind = os.path.join(PREDICTIONS_DIR, "blind", "Its_always_loss-blind-all-miniLM-L6-v2-2-mnr-cosine.jsonl")
-    blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl_blind)
+    blind_generation_pipeline(ds, t5_model, t5_tokenizer, t5_device, llama_model, llama_tokenizer, llama_device, all_mini_jsonl_blind) '''
 
 if __name__ == "__main__":
     main()

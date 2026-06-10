@@ -25,16 +25,18 @@ def create_jsonl_file(results, filepath, type):
 
             f.write(json.dumps(json_record, ensure_ascii=False) + '\n')
 
+    print(f"JSONL file created at: {filepath}")
+
 def generate_jsonl_file(results, split_name, model_name, setting, type):
     group_name = "Its_always_loss"
 
-    output_dir = os.path.join("rag", split_name)
+    output_dir = split_name
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        
+        print(f"Directory '{output_dir}' created.")
     filename = f"{group_name}-{split_name}-{model_name}-{setting}.jsonl"
-    filepath = os.path.join(output_dir, filename)
     print(f"{filename} generation...")
+    filepath = os.path.join(output_dir, filename)
     create_jsonl_file(results, filepath, type)
 
 def export_judge_to_excel(jsonl_filepath, excel_filepath, queries, short_answers):
